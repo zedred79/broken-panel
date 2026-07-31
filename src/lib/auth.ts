@@ -1,7 +1,12 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  clearLoginAttempts,
+  isLoginRateLimited,
+  registerFailedLogin,
+} from "@/lib/login-rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -22,12 +27,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        const rateLimitKey = email.trim().toLowerCase();
+        if (isLoginRateLimited(rateLimitKey)) {
+          // Messaggio distinguibile in src/app/login/actions.ts, per mostrare
+          // "riprova più tardi" invece del generico "credenziali non valide".
+          throw new CredentialsSignin("rate-limited");
+        }
+
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return null;
+        if (!user) {
+          registerFailedLogin(rateLimitKey);
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          registerFailedLogin(rateLimitKey);
+          return null;
+        }
 
+        clearLoginAttempts(rateLimitKey);
         return { id: user.id, email: user.email, name: user.name };
       },
     }),

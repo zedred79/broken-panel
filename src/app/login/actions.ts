@@ -18,6 +18,9 @@ export async function loginAction(
     });
   } catch (error) {
     if (error instanceof AuthError) {
+      if (error.message.startsWith("rate-limited")) {
+        return "Troppi tentativi falliti. Riprova tra qualche minuto.";
+      }
       return "Email o password non validi.";
     }
     throw error;
