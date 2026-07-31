@@ -52,7 +52,12 @@ export async function POST(request: Request) {
 
   let coverImage: string | null = null;
   if (cover instanceof File && cover.size > 0) {
-    coverImage = await saveCoverImage(cover);
+    try {
+      coverImage = await saveCoverImage(cover);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Errore di upload";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
   }
 
   const comic = await prisma.comic.create({

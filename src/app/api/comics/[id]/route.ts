@@ -61,7 +61,12 @@ export async function PATCH(
   if (status === "draft" || status === "published") data.status = status;
 
   if (cover instanceof File && cover.size > 0) {
-    data.coverImage = await saveCoverImage(cover);
+    try {
+      data.coverImage = await saveCoverImage(cover);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Errore di upload";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
   }
 
   const previous = await prisma.comic.findUnique({
