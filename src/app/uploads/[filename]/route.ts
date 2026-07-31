@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
-import { UPLOADS_ROOT } from "@/lib/uploads";
+import { UPLOAD_FILENAME_PATTERN, UPLOADS_ROOT } from "@/lib/uploads";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -11,15 +11,13 @@ const CONTENT_TYPES: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-const SAFE_FILENAME = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/;
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   const { filename } = await params;
 
-  if (!SAFE_FILENAME.test(filename)) {
+  if (!UPLOAD_FILENAME_PATTERN.test(filename)) {
     return NextResponse.json({ error: "Nome file non valido" }, { status: 400 });
   }
 

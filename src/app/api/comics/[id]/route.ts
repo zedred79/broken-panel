@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
-import { saveCoverImage } from "@/lib/uploads";
+import { deleteUploadedFile, saveCoverImage } from "@/lib/uploads";
 
 export async function GET(
   _request: Request,
@@ -64,7 +64,20 @@ export async function PATCH(
     data.coverImage = await saveCoverImage(cover);
   }
 
+  const previous = await prisma.comic.findUnique({
+    where: { id },
+    select: { coverImage: true },
+  });
+
   const comic = await prisma.comic.update({ where: { id }, data });
+
+  if (
+    typeof data.coverImage === "string" &&
+    previous?.coverImage &&
+    previous.coverImage !== data.coverImage
+  ) {
+    await deleteUploadedFile(previous.coverImage);
+  }
 
   return NextResponse.json({ comic });
 }
@@ -79,7 +92,21 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  const comic = await prisma.comic.findUnique({
+    where: { id },
+    include: { pages: { select: { imageUrl: true } } },
+  });
+  if (!comic) {
+    return NextResponse.json({ error: "Non trovato" }, { status: 404 });
+  }
+
   await prisma.comic.delete({ where: { id } });
+
+  await Promise.all([
+    deleteUploadedFile(comic.coverImage),
+    ...comic.pages.map((page) => deleteUploadedFile(page.imageUrl)),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

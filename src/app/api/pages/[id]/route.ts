@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
+import { deleteUploadedFile } from "@/lib/uploads";
 
 export async function PATCH(
   request: Request,
@@ -61,7 +62,17 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  const page = await prisma.page.findUnique({
+    where: { id },
+    select: { imageUrl: true },
+  });
+  if (!page) {
+    return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+  }
+
   await prisma.page.delete({ where: { id } });
+  await deleteUploadedFile(page.imageUrl);
 
   return NextResponse.json({ ok: true });
 }

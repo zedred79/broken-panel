@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
-import { saveLogoImage } from "@/lib/uploads";
+import { deleteUploadedFile, saveLogoImage } from "@/lib/uploads";
 import { DEFAULT_HEADER_LOGO, DEFAULT_HERO_LOGO } from "@/lib/site-settings";
 
 export async function GET() {
@@ -53,11 +53,24 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  const previous = await prisma.siteSetting.findUnique({
+    where: { id: "singleton" },
+  });
+
   const settings = await prisma.siteSetting.upsert({
     where: { id: "singleton" },
     update: data,
     create: { id: "singleton", ...data },
   });
+
+  await Promise.all([
+    "headerLogo" in data && previous?.headerLogo !== data.headerLogo
+      ? deleteUploadedFile(previous?.headerLogo)
+      : Promise.resolve(),
+    "heroLogo" in data && previous?.heroLogo !== data.heroLogo
+      ? deleteUploadedFile(previous?.heroLogo)
+      : Promise.resolve(),
+  ]);
 
   return NextResponse.json({
     headerLogo: settings.headerLogo,
