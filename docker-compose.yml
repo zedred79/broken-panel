@@ -1,0 +1,39 @@
+services:
+  broken-panel:
+    build: .
+    image: broken-panel:latest
+    container_name: broken-panel
+    restart: unless-stopped
+    ports:
+      # Host:Container - porta host insolita per evitare conflitti con gli altri
+      # servizi sul server. Cambiala in .env con HOST_PORT=xxxxx se serve.
+      - "${HOST_PORT:-48217}:3000"
+    environment:
+      DATABASE_URL: "file:/data/app.db"
+      UPLOADS_DIR: "/app/uploads"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      SITE_HERO_TITLE: "${SITE_HERO_TITLE}"
+      SITE_HERO_SUBTITLE: "${SITE_HERO_SUBTITLE}"
+      SITE_FOOTER_TEXT: "${SITE_FOOTER_TEXT}"
+    volumes:
+      - broken_panel_db:/data
+      - broken_panel_uploads:/app/uploads
+    networks:
+      - default
+      - swag_net
+
+networks:
+  default: {}
+  swag_net:
+    # Rete esterna condivisa con il container SWAG, per il proxy interno
+    # senza passare dalla porta esposta sull'host.
+    # Verifica il nome reale con: docker network ls
+    external: true
+    name: ${SWAG_NETWORK_NAME:-swag_default}
+
+volumes:
+  broken_panel_db:
+  broken_panel_uploads:

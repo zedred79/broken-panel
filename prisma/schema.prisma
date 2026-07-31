@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+}
+
+model Comic {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  sourceWork  String
+  author      String?
+  description String?
+  style       String?
+  coverImage  String?
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  pages       Page[]
+
+  @@index([status])
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  comicId   String
+  comic     Comic    @relation(fields: [comicId], references: [id], onDelete: Cascade)
+  order     Int
+  imageUrl  String
+  width     Int
+  height    Int
+  panels    Panel[]
+  createdAt DateTime @default(now())
+
+  @@unique([comicId, order])
+}
+
+model Panel {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  order  Int
+  points String
+
+  @@unique([pageId, order])
+}
+
+model SiteSetting {
+  id         String   @id @default("singleton")
+  headerLogo String?
+  heroLogo   String?
+  updatedAt  DateTime @updatedAt
+}

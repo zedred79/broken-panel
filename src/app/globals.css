@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0b0d;
+  --surface: #16161a;
+  --surface-2: #1e1e24;
+  --foreground: #f4f4f2;
+  --muted: #9a9aa3;
+  --border: #2a2a31;
+  --accent: #e0263f;
+  --accent-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bebas);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.03em;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.crack-divider {
+  clip-path: polygon(
+    0 40%,
+    8% 45%,
+    14% 30%,
+    22% 50%,
+    30% 38%,
+    38% 55%,
+    46% 35%,
+    54% 48%,
+    62% 32%,
+    70% 52%,
+    78% 40%,
+    86% 58%,
+    94% 36%,
+    100% 45%,
+    100% 100%,
+    0 100%
+  );
+}
