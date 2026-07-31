@@ -2,6 +2,17 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import imageSize from "image-size";
+import { JSDOM } from "jsdom";
+import createDOMPurify from "dompurify";
+
+// Istanza DOMPurify server-side (via jsdom) riusata per ogni upload: un SVG
+// caricato dall'admin può contenere <script>, gestori onload/onclick, o
+// <foreignObject> con HTML arbitrario — se caricato per errore o con un
+// account admin compromesso, verrebbe eseguito nell'origine del sito quando
+// l'SVG viene aperto direttamente (non tramite <img>, che lo sandboxa già).
+const domPurify = createDOMPurify(
+  new JSDOM("").window as unknown as Window & typeof globalThis
+);
 
 const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
@@ -78,11 +89,28 @@ const LOGO_ALLOWED_TYPES = new Set([
   "image/svg+xml",
 ]);
 
+function sanitizeSvg(buffer: Buffer): Buffer {
+  const dirty = buffer.toString("utf-8");
+  const clean = domPurify.sanitize(dirty, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: ["script", "foreignObject"],
+  });
+
+  if (!clean.includes("<svg")) {
+    throw new Error("File SVG non valido");
+  }
+
+  return Buffer.from(clean, "utf-8");
+}
+
 export async function saveLogoImage(file: File): Promise<string> {
   if (!LOGO_ALLOWED_TYPES.has(file.type)) {
     throw new Error("Formato immagine non supportato (usa PNG, WebP, SVG o JPEG)");
   }
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer<ArrayBufferLike> = Buffer.from(await file.arrayBuffer());
+  if (file.type === "image/svg+xml") {
+    buffer = sanitizeSvg(buffer);
+  }
   const ext =
     file.type === "image/svg+xml"
       ? "svg"
