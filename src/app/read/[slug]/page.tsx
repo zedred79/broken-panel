@@ -4,10 +4,13 @@ import { ComicReader } from "@/components/reader/ComicReader";
 
 export default async function ReadComicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { slug } = await params;
+  const { page } = await searchParams;
 
   const comic = await prisma.comic.findUnique({
     where: { slug },
@@ -34,5 +37,15 @@ export default async function ReadComicPage({
     })),
   }));
 
-  return <ComicReader slug={comic.slug} title={comic.title} pages={pages} />;
+  const parsedPage = page ? Number.parseInt(page, 10) : NaN;
+  const initialPageIndex = Number.isInteger(parsedPage) ? parsedPage - 1 : 0;
+
+  return (
+    <ComicReader
+      slug={comic.slug}
+      title={comic.title}
+      pages={pages}
+      initialPageIndex={initialPageIndex}
+    />
+  );
 }

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ContinueReadingLink } from "@/components/site/ContinueReadingLink";
 
 export default async function ComicDetailPage({
   params,
@@ -65,12 +65,10 @@ export default async function ComicDetailPage({
 
           <div className="mt-8 flex items-center gap-4">
             {readablePages.length > 0 ? (
-              <Link
-                href={`/read/${comic.slug}`}
-                className="rounded bg-accent px-6 py-3 font-semibold text-accent-foreground transition hover:opacity-90"
-              >
-                Leggi ora
-              </Link>
+              <ContinueReadingLink
+                slug={comic.slug}
+                pageCount={comic.pages.length}
+              />
             ) : (
               <span className="text-muted">In lavorazione — presto disponibile</span>
             )}

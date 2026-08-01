@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { clearReadingProgress, saveReadingProgress } from "@/lib/reading-progress";
 
 type Point = { x: number; y: number };
 type ReaderPanel = { points: Point[] };
@@ -32,16 +33,20 @@ export function ComicReader({
   slug,
   title,
   pages,
+  initialPageIndex = 0,
 }: {
   slug: string;
   title: string;
   pages: ReaderPage[];
+  initialPageIndex?: number;
 }) {
   const maskId = useId();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
-  const [pageIndex, setPageIndex] = useState(0);
+  const [pageIndex, setPageIndex] = useState(() =>
+    Math.min(Math.max(initialPageIndex, 0), pages.length - 1)
+  );
   const [panelIndex, setPanelIndex] = useState(-1);
   const [hintVisible, setHintVisible] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -60,6 +65,10 @@ export function ComicReader({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    saveReadingProgress(slug, pageIndex);
+  }, [slug, pageIndex]);
+
   const currentPage = pages[pageIndex];
   const panels = currentPage?.panels ?? [];
 
@@ -75,6 +84,7 @@ export function ComicReader({
       return;
     }
     if (pageIndex >= pages.length - 1) {
+      clearReadingProgress(slug);
       router.push(`/comics/${slug}`);
       return;
     }
