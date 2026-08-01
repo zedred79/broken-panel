@@ -50,7 +50,16 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
   immagini ufficiali attivamente mantenuto).
 - **docker-compose.yml** con porta host non standard (`HOST_PORT`, default 48217, per non
   entrare in conflitto con gli altri servizi già sul server) e rete esterna condivisa con
-  SWAG.
+  SWAG. `image: zedred/broken-panel:latest` (repository **privato** su Docker Hub) è la
+  fonte primaria in produzione: il server fa solo `docker compose pull && up -d`, senza
+  bisogno dei sorgenti né dei tool di compilazione — `build: .` resta nel file solo per
+  chi vuole ripubblicare una nuova versione (`docker compose build && docker compose
+  push`) o buildare direttamente sul server come fallback. Database e upload vivono in
+  `./data/db` e `./data/uploads` (cartelle mappate sull'host, non volumi Docker nominati
+  — backup con un `tar` diretto, niente più bisogno di un container temporaneo per
+  leggerle). **Insidia**: il container gira come utente non-root (uid 1001) — `./data`
+  deve appartenergli fin da subito (`chown -R 1001:1001 data` una tantum prima del primo
+  avvio), altrimenti l'app non riesce a scrivere né il DB né gli upload.
 
 ## Struttura del progetto
 

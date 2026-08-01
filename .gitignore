@@ -47,6 +47,10 @@ next-env.d.ts
 /uploads/*
 !/uploads/.gitkeep
 
+# dati persistenti del deploy Docker (DB + upload), bind-mount di
+# docker-compose.yml — vive solo sul server, non va mai committato
+/data/
+
 # generated Prisma client (regenerated via `npx prisma generate`, includes
 # platform-specific native binaries — must not be committed)
 /src/generated

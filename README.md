@@ -29,11 +29,32 @@ Le variabili di sviluppo sono in `.env` (già presente, con credenziali di test:
    su ogni vignetta scurendo il resto della tavola con una maschera SVG, con transizioni fluide.
    Navigazione con clic (sinistra/destra dello schermo), frecce ← →, barra spaziatrice.
 
+## Pubblicare l'immagine su Docker Hub
+
+L'immagine è `zedred/broken-panel` (repository **privato**). Va ricostruita e
+ripubblicata solo quando cambia il codice — il server di produzione non builda mai da
+sorgente, scarica solo l'immagine già pronta (vedi sotto).
+
+Da una macchina con i sorgenti aggiornati (dev machine, non necessariamente il server):
+
+```bash
+docker login   # una tantum, chiede le credenziali/token Docker Hub
+docker compose build
+docker compose push
+```
+
+**Prima del primo push**, crea il repository su hub.docker.com impostandolo su
+**Private** — se non esiste ancora, un `docker push` lo creerebbe automaticamente ma
+**pubblico** di default, e cambiarne la visibilità dopo è più scomodo che farlo bene
+dall'inizio.
+
 ## Deploy in produzione con Docker + SWAG
 
 Presuppone un server Ubuntu con SWAG (proxy reverse in Docker) già funzionante.
+Il server non ha bisogno dei sorgenti del progetto: bastano `docker-compose.yml` e
+`.env` (copiali dal repo, o creali a mano seguendo `.env.example`).
 
-### 1. Copia il progetto sul server e configura le variabili
+### 1. Configura le variabili
 
 ```bash
 cp .env.example .env
@@ -54,10 +75,19 @@ al `docker-compose.yml` di SWAG:
 docker network create swag_default
 ```
 
-### 2. Build e avvio
+### 2. Prepara le cartelle dati e avvia
+
+Il database e gli upload vivono in `./data` (accanto a `docker-compose.yml`), mappata
+dentro il container. Il container gira come utente non-root (uid **1001**): la cartella
+deve appartenergli fin dall'inizio, altrimenti l'app non riesce a scriverci.
 
 ```bash
-docker compose up -d --build
+mkdir -p data/db data/uploads
+sudo chown -R 1001:1001 data
+
+docker login                 # se non l'hai già fatto su questa macchina
+docker compose pull          # scarica zedred/broken-panel:latest, niente build locale
+docker compose up -d
 ```
 
 Il container:
@@ -83,23 +113,30 @@ docker restart swag
 
 ### Dati persistenti
 
-- `broken_panel_db` (volume Docker): il database SQLite.
-- `broken_panel_uploads` (volume Docker): le immagini delle pagine/copertine caricate.
+- `./data/db`: il database SQLite (`app.db`).
+- `./data/uploads`: le immagini di pagine/copertine/loghi caricate.
 
-Per backup rapidi:
+Essendo cartelle normali sul filesystem dell'host (non volumi Docker nominati), il
+backup è un `tar` diretto, senza bisogno di un container temporaneo:
 
 ```bash
-docker run --rm -v broken-panel_broken_panel_db:/data -v "$PWD":/backup \
-  alpine tar czf /backup/broken-panel-db-backup.tar.gz -C /data .
+tar czf broken-panel-backup-$(date +%F).tar.gz -C data .
 ```
 
 ### Aggiornare l'app
 
+Dopo aver ripubblicato l'immagine (`docker compose build && docker compose push` dalla
+dev machine, vedi sopra), sul server:
+
 ```bash
-git pull   # se versionato
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 `prisma db push` non cancella dati per modifiche non distruttive allo schema; per
 modifiche più invasive valuta di passare a `prisma migrate` con file di migrazione
 versionati.
+
+Se preferisci ancora buildare direttamente sul server (serve avere i sorgenti lì e i
+tool di compilazione nell'immagine, vedi PROJECT.md sul perché gli stage `deps`/`builder`
+non usano `-slim`), `docker compose up -d --build` funziona esattamente come prima.

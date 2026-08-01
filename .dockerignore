@@ -9,3 +9,4 @@ uploads/*
 !uploads/.gitkeep
 npm-debug.log*
 .claude
+data/

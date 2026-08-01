@@ -1,7 +1,11 @@
 services:
   broken-panel:
+    # build: usato solo da `docker compose build` (per pubblicare una nuova
+    # versione su Docker Hub). Sul server di produzione non serve: basta
+    # `docker compose pull && docker compose up -d`, senza portarci sopra i
+    # sorgenti né i tool di compilazione (vedi README).
     build: .
-    image: broken-panel:latest
+    image: zedred/broken-panel:latest
     container_name: broken-panel
     restart: unless-stopped
     ports:
@@ -19,8 +23,15 @@ services:
       SITE_HERO_SUBTITLE: "${SITE_HERO_SUBTITLE}"
       SITE_FOOTER_TEXT: "${SITE_FOOTER_TEXT}"
     volumes:
-      - broken_panel_db:/data
-      - broken_panel_uploads:/app/uploads
+      # Cartelle mappate sull'host invece di volumi Docker nominati: puoi
+      # ispezionare/backuppare ./data direttamente, senza passare da un
+      # container temporaneo. Il container gira come utente non-root
+      # (uid 1001, vedi Dockerfile) — la PRIMA volta va dato a queste
+      # cartelle il proprietario giusto, altrimenti l'app non riesce a
+      # scriverci (DB e upload falliscono in silenzio):
+      #   mkdir -p data/db data/uploads && sudo chown -R 1001:1001 data
+      - ./data/db:/data
+      - ./data/uploads:/app/uploads
     networks:
       - default
       - swag_net
@@ -33,7 +44,3 @@ networks:
     # Verifica il nome reale con: docker network ls
     external: true
     name: ${SWAG_NETWORK_NAME:-swag_default}
-
-volumes:
-  broken_panel_db:
-  broken_panel_uploads:
