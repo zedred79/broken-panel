@@ -47,22 +47,29 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
   dell'immagine finale. `runner` installa anche `libstdc++6` via apt (richiesta a runtime
   dal binario nativo di `better-sqlite3`) oltre a `openssl` (richiesta dai binari di
   Prisma). Node 20 è stato abbandonato perché ormai end-of-life (rimosso dal repository
-  immagini ufficiali attivamente mantenuto). + **docker-compose.yml** con porta host non
-  standard (`HOST_PORT`, default 48217, per non entrare in conflitto con gli altri servizi
-  già sul server) e rete esterna condivisa con SWAG.
+  immagini ufficiali attivamente mantenuto).
+- **docker-compose.yml** con porta host non standard (`HOST_PORT`, default 48217, per non
+  entrare in conflitto con gli altri servizi già sul server) e rete esterna condivisa con
+  SWAG.
 
 ## Struttura del progetto
 
 ```
-prisma/schema.prisma          Modelli: User, Comic, Page, Panel
-prisma/seed.ts                Crea/aggiorna l'utente admin da env
+prisma.config.ts               Config Prisma 7 (datasource per i comandi CLI, vedi sopra)
+prisma/schema.prisma           Modelli: User, Comic, Page, Panel, SiteSetting
+prisma/seed.ts                 Crea/aggiorna l'utente admin da env
 
 src/lib/
-  auth.ts                     Config NextAuth (provider Credentials, callback JWT/session)
-  prisma.ts                   Singleton PrismaClient
-  require-admin.ts            Helper per proteggere le API route
-  site-config.ts              Testi homepage/footer configurabili da env
-  slugify.ts, uploads.ts      Utility (slug univoci, salvataggio immagini su disco)
+  auth.ts                      Config NextAuth (provider Credentials, callback JWT/session,
+                                rate-limit sui tentativi di login, vedi sotto)
+  login-rate-limit.ts          Contatore in-memory dei tentativi di login falliti
+  prisma.ts                    Singleton PrismaClient (con adapter, vedi sopra)
+  reading-progress.ts          Persistenza lato client (localStorage) dell'ultima pagina
+                                letta di ogni fumetto — vedi sezione reader più sotto
+  require-admin.ts             Helper per proteggere le API route
+  site-config.ts               Testi homepage/footer configurabili da env
+  slugify.ts, uploads.ts       Utility (slug univoci, salvataggio/validazione/sanificazione
+                                immagini su disco, generazione thumbnail — vedi sotto)
 
 src/proxy.ts                  Ex "middleware.ts" (rinominato in Next 16, vedi sotto).
                                Protegge /admin/* redirigendo a /login se non autenticati.
@@ -76,7 +83,7 @@ src/app/read/[slug]/           Il reader immersivo (componente client ComicReade
 src/components/admin/          PanelEditor (slicer poligoni), PageManager, ComicForm,
                                 DeleteComicButton, AdminNav, SiteSettingsForm
 src/components/reader/         ComicReader (la logica di zoom/maschera)
-src/components/site/           Navbar, Footer, ComicCard
+src/components/site/           Navbar, Footer, ComicCard, ContinueReadingLink
 
 src/generated/prisma/          Client Prisma generato — NON committato (vedi .gitignore),
                                 rigenerato ad ogni `npx prisma generate` / build Docker.
@@ -87,12 +94,20 @@ src/generated/prisma/          Client Prisma generato — NON committato (vedi .
 ```
 User   { email, passwordHash }                         — un solo record, l'admin
 Comic  { slug, title, sourceWork, author, description,
-         style, coverImage, status: draft|published }
-Page   { comicId, order, imageUrl, width, height }      — una tavola A4 caricata
+         style, coverImage, coverThumbnail,
+         status: draft|published }
+Page   { comicId, order, imageUrl, thumbnailUrl,        — una tavola A4 caricata
+         width, height }
 Panel  { pageId, order, points: JSON stringify di       — poligono libero di una vignetta,
          [{x,y}, ...] in percentuale 0-100 }              coordinate % relative all'immagine
 SiteSetting { id: "singleton", headerLogo?, heroLogo? } — riga unica, loghi personalizzati
 ```
+
+`coverThumbnail`/`thumbnailUrl` (WebP 480px, generati all'upload — vedi sezione hardening
+upload più sotto) sono nullable perché aggiunti con un `db push` additivo: i fumetti/pagine
+caricati prima di questa modifica hanno questi campi `NULL` e continuano a funzionare — i
+componenti che li usano fanno fallback all'originale (`thumbnailUrl ?? imageUrl`), nessun
+backfill retroattivo è stato fatto.
 
 I punti dei poligoni sono salvati come **percentuali** (0-100) dell'immagine, non pixel
 assoluti — è la scelta chiave che rende tutto il resto (editor + reader) indipendente
@@ -116,13 +131,25 @@ dalla risoluzione con cui viene mostrata l'immagine.
    entra nel panel 0, poi 1, ecc.; oltre l'ultimo panel si passa alla pagina successiva
    (di nuovo con `panelIndex = -1`); oltre l'ultima pagina si torna a `/comics/[slug]`.
 5. **Salto rapido a una pagina**: il pulsante "Pagina X/Y ▾" in alto apre un overlay
-   (`pickerOpen`) con una griglia di miniature di tutte le pagine (riusa gli `imageUrl`
-   già presenti nei dati passati al componente, nessuna chiamata aggiuntiva). Cliccando
+   (`pickerOpen`) con una griglia di miniature di tutte le pagine (usa `thumbnailUrl`
+   se presente, fallback su `imageUrl` per i dati legacy — vedi sotto). Cliccando
    una miniatura si chiama `jumpToPage(index)`: imposta `pageIndex` e resetta
    `panelIndex = -1` (arrivo a pagina intera, come da flusso normale). Serve a non dover
    rifare tutte le vignette delle pagine già lette per riprendere più avanti. Chiusura
    con ✕, click fuori dalla griglia, o Esc; mentre il picker è aperto le frecce ← → e lo
    spazio non navigano (guardia `if (pickerOpen) return;` nell'handler keydown).
+6. **Persistenza del progresso di lettura** (`src/lib/reading-progress.ts`): ad ogni
+   cambio pagina il `pageIndex` viene salvato in `localStorage` per slug del fumetto
+   (lato client, non sul server — non ci sono account lettore in questo sito, quindi non
+   c'è a chi legare un progresso lato server; è anche per questo che non serve alcuna
+   configurazione sul reverse proxy SWAG davanti al servizio). Viene cancellato quando si
+   arriva in fondo al fumetto. `ComicReader` accetta un `initialPageIndex` (clampato ai
+   limiti reali) valorizzato da `?page=` nella query string di `/read/[slug]`.
+   `src/components/site/ContinueReadingLink.tsx`, sulla pagina dettaglio fumetto, mostra
+   "Continua da pagina X" + "Ricomincia dall'inizio" se trova un progresso salvato valido,
+   altrimenti il solito "Leggi ora" — legge il `localStorage` con `useSyncExternalStore`
+   (non `useEffect`+`useState`, che darebbe un warning React e un mismatch di idratazione
+   più difficile da gestire bene). Granularità a livello di pagina, non di vignetta.
 
 **Insidia trovata e corretta**: la dimensione del contenitore veniva letta solo via
 `ResizeObserver`, che in alcuni contesti (pannelli non compositati/non visibili) non
@@ -159,6 +186,41 @@ li legge.
 
 **Se in futuro serve salvare altri tipi di file caricati dall'utente, riusa questo
 pattern — non tornare a scrivere dentro `public/`.**
+
+## Hardening di sicurezza (upload e login)
+
+Tutto qui sotto è stato aggiunto dopo un audit di sicurezza del codice iniziale, che
+accettava upload senza limiti né validazione del contenuto reale e non aveva alcun
+rate-limit sui tentativi di login.
+
+- **Limiti di dimensione** per tipo di upload: 20MB tavole (spesso render AI ad alta
+  risoluzione), 8MB copertine, 2MB loghi (icone piccole). Controllati su `file.size`
+  prima di leggere il buffer in memoria.
+- **Validazione sul contenuto reale, non sul Content-Type dichiarato dal client**: per i
+  formati raster (PNG/JPEG/WebP), `validateRasterImage()` usa `image-size` per leggere il
+  formato dai byte reali (magic number) e verifica che corrisponda al MIME dichiarato —
+  un file rinominato con estensione/MIME falsi viene rifiutato con 400 invece di essere
+  salvato as-is.
+- **Sanificazione degli SVG** (solo i loghi accettano `image/svg+xml`): `sanitizeSvg()`
+  usa DOMPurify (via `jsdom`, uso server-side) per rimuovere `<script>`,
+  gestori `onload`/`onclick`, `<foreignObject>` e ogni altro vettore XSS prima di scrivere
+  il file su disco — un SVG caricato per errore (o con l'account admin compromesso)
+  potrebbe altrimenti eseguire script nell'origine del sito se aperto direttamente
+  (l'`<img>` normale invece sandboxa già l'esecuzione).
+- **Generazione thumbnail**: `saveThumbnail()` (via `sharp`) genera una versione WebP da
+  480px di larghezza per ogni tavola/copertina caricata, usata nelle griglie (vedi sopra
+  il modello dati). Il reader in modalità lettura/zoom continua a usare l'originale a
+  piena risoluzione.
+- **Cleanup dei file orfani**: `deleteUploadedFile()` è chiamata da tutte le route che
+  eliminano o sostituiscono un fumetto/pagina/logo (comic, page, cover, thumbnail incluso)
+  — prima non veniva ripulito nulla e i file restavano su disco per sempre. Ignora
+  silenziosamente URL esterni a `/uploads/` (i loghi di default bundlati in `public/`) e
+  file già assenti.
+- **Rate-limit sul login** (`src/lib/login-rate-limit.ts`, usato in `src/lib/auth.ts`):
+  5 tentativi falliti / 15 minuti per email, poi anche la password corretta viene
+  rifiutata finché la finestra non scade. In-memory (si resetta a un riavvio del
+  container) — scelta proporzionata a un'app a singolo processo con un solo account
+  admin, non serve infrastruttura esterna.
 
 ## Route API principali
 
@@ -213,17 +275,19 @@ invece non sono in env: si gestiscono da `/admin/settings` (vedi sopra).
 
 ## Stato attuale / cosa manca
 
-Fatto: sito pubblico, reader con zoom e salto rapido a una pagina specifica, area admin
-completa (CRUD fumetti, upload pagine, editor vignette, eliminazione fumetti), auth,
-Docker + config SWAG di esempio, testi homepage configurabili da env, loghi header/hero
-personalizzabili da `/admin/settings`.
+Fatto: sito pubblico, reader con zoom, salto rapido a una pagina specifica e persistenza
+del progresso di lettura tra sessioni (localStorage), area admin completa (CRUD fumetti,
+upload pagine, editor vignette, eliminazione fumetti), auth con rate-limit sui tentativi
+di login, Docker + config SWAG di esempio, testi homepage configurabili da env, loghi
+header/hero personalizzabili da `/admin/settings`, upload con limiti di dimensione e
+validazione del contenuto reale, sanificazione degli SVG caricati come loghi, cleanup dei
+file orfani su delete/replace, thumbnail generati per tavole/copertine.
 
 Non ancora fatto / possibili prossimi passi: cambio password admin da UI (va ancora
 rifatto il seed/riavviato il container), gestione capitoli/raggruppamento pagine (lo
 schema Page ha solo `order` piatto, non capitoli), i18n (tutto è in italiano hardcoded),
-statistiche di lettura, commenti/community, ricordare automaticamente l'ultima pagina
-letta tra una sessione e l'altra (oggi il salto pagina è manuale, non c'è persistenza
-del progresso di lettura).
+statistiche di lettura (aggregate, lato admin — diverso dal progresso di lettura
+per-visitatore già fatto), commenti/community.
 
 ## Comandi utili
 
