@@ -62,7 +62,9 @@ export async function PATCH(
 
   if (cover instanceof File && cover.size > 0) {
     try {
-      data.coverImage = await saveCoverImage(cover);
+      const saved = await saveCoverImage(cover);
+      data.coverImage = saved.url;
+      data.coverThumbnail = saved.thumbnailUrl;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore di upload";
       return NextResponse.json({ error: message }, { status: 400 });
@@ -71,17 +73,20 @@ export async function PATCH(
 
   const previous = await prisma.comic.findUnique({
     where: { id },
-    select: { coverImage: true },
+    select: { coverImage: true, coverThumbnail: true },
   });
 
   const comic = await prisma.comic.update({ where: { id }, data });
 
-  if (
-    typeof data.coverImage === "string" &&
-    previous?.coverImage &&
-    previous.coverImage !== data.coverImage
-  ) {
-    await deleteUploadedFile(previous.coverImage);
+  if (typeof data.coverImage === "string" && previous) {
+    await Promise.all([
+      previous.coverImage !== data.coverImage
+        ? deleteUploadedFile(previous.coverImage)
+        : Promise.resolve(),
+      previous.coverThumbnail !== data.coverThumbnail
+        ? deleteUploadedFile(previous.coverThumbnail)
+        : Promise.resolve(),
+    ]);
   }
 
   return NextResponse.json({ comic });
@@ -100,7 +105,7 @@ export async function DELETE(
 
   const comic = await prisma.comic.findUnique({
     where: { id },
-    include: { pages: { select: { imageUrl: true } } },
+    include: { pages: { select: { imageUrl: true, thumbnailUrl: true } } },
   });
   if (!comic) {
     return NextResponse.json({ error: "Non trovato" }, { status: 404 });
@@ -110,7 +115,11 @@ export async function DELETE(
 
   await Promise.all([
     deleteUploadedFile(comic.coverImage),
-    ...comic.pages.map((page) => deleteUploadedFile(page.imageUrl)),
+    deleteUploadedFile(comic.coverThumbnail),
+    ...comic.pages.flatMap((page) => [
+      deleteUploadedFile(page.imageUrl),
+      deleteUploadedFile(page.thumbnailUrl),
+    ]),
   ]);
 
   return NextResponse.json({ ok: true });

@@ -51,9 +51,12 @@ export async function POST(request: Request) {
   }
 
   let coverImage: string | null = null;
+  let coverThumbnail: string | null = null;
   if (cover instanceof File && cover.size > 0) {
     try {
-      coverImage = await saveCoverImage(cover);
+      const saved = await saveCoverImage(cover);
+      coverImage = saved.url;
+      coverThumbnail = saved.thumbnailUrl;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore di upload";
       return NextResponse.json({ error: message }, { status: 400 });
@@ -72,6 +75,7 @@ export async function POST(request: Request) {
           : null,
       style: typeof style === "string" && style.trim() ? style.trim() : null,
       coverImage,
+      coverThumbnail,
     },
   });
 

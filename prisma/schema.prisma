@@ -16,32 +16,34 @@ model User {
 }
 
 model Comic {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  sourceWork  String
-  author      String?
-  description String?
-  style       String?
-  coverImage  String?
-  status      String   @default("draft")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  pages       Page[]
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  sourceWork     String
+  author         String?
+  description    String?
+  style          String?
+  coverImage     String?
+  coverThumbnail String?
+  status         String   @default("draft")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  pages          Page[]
 
   @@index([status])
 }
 
 model Page {
-  id        String   @id @default(cuid())
-  comicId   String
-  comic     Comic    @relation(fields: [comicId], references: [id], onDelete: Cascade)
-  order     Int
-  imageUrl  String
-  width     Int
-  height    Int
-  panels    Panel[]
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  comicId      String
+  comic        Comic    @relation(fields: [comicId], references: [id], onDelete: Cascade)
+  order        Int
+  imageUrl     String
+  thumbnailUrl String?
+  width        Int
+  height       Int
+  panels       Panel[]
+  createdAt    DateTime @default(now())
 
   @@unique([comicId, order])
 }

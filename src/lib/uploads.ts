@@ -2,6 +2,7 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import imageSize from "image-size";
+import sharp from "sharp";
 import { JSDOM } from "jsdom";
 import createDOMPurify from "dompurify";
 
@@ -59,6 +60,28 @@ function validateRasterImage(
   return { width: result.width, height: result.height };
 }
 
+// Le griglie (pagine in admin, picker pagine nel reader, copertine nel
+// catalogo) mostrano le immagini a ~250-300px di larghezza: 480px basta a
+// coprire anche schermi retina senza scaricare l'originale a piena
+// risoluzione (spesso diversi MB per un render AI ad alta definizione). Il
+// reader in modalità lettura/zoom continua a usare l'originale, non il
+// thumbnail, perché lo zoom arriva fino a 6x.
+const THUMBNAIL_WIDTH = 480;
+
+async function saveThumbnail(
+  buffer: Buffer,
+  baseFilename: string
+): Promise<string> {
+  const thumbFilename = `${baseFilename}-thumb.webp`;
+  const thumbBuffer = await sharp(buffer)
+    .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
+
+  await writeFile(path.join(UPLOADS_ROOT, thumbFilename), thumbBuffer);
+  return `/uploads/${thumbFilename}`;
+}
+
 // Deliberately outside `public/`: `next start` indexes the public folder once
 // at process startup, so files written there at runtime 404 until the server
 // restarts. Uploaded content is served instead via src/app/uploads/[filename].
@@ -89,9 +112,12 @@ export async function deleteUploadedFile(
   }
 }
 
-export async function savePageImage(
-  file: File
-): Promise<{ url: string; width: number; height: number }> {
+export async function savePageImage(file: File): Promise<{
+  url: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+}> {
   if (!ALLOWED_TYPES.has(file.type)) {
     throw new Error("Formato immagine non supportato (usa PNG, JPEG o WebP)");
   }
@@ -101,15 +127,19 @@ export async function savePageImage(
   const { width, height } = validateRasterImage(buffer, file.type);
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const filename = `${randomUUID()}.${ext}`;
+  const id = randomUUID();
+  const filename = `${id}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
   await writeFile(path.join(UPLOADS_ROOT, filename), buffer);
+  const thumbnailUrl = await saveThumbnail(buffer, id);
 
-  return { url: `/uploads/${filename}`, width, height };
+  return { url: `/uploads/${filename}`, thumbnailUrl, width, height };
 }
 
-export async function saveCoverImage(file: File): Promise<string> {
+export async function saveCoverImage(
+  file: File
+): Promise<{ url: string; thumbnailUrl: string }> {
   if (!ALLOWED_TYPES.has(file.type)) {
     throw new Error("Formato immagine non supportato (usa PNG, JPEG o WebP)");
   }
@@ -118,12 +148,14 @@ export async function saveCoverImage(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
   validateRasterImage(buffer, file.type);
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const filename = `cover-${randomUUID()}.${ext}`;
+  const id = `cover-${randomUUID()}`;
+  const filename = `${id}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
   await writeFile(path.join(UPLOADS_ROOT, filename), buffer);
+  const thumbnailUrl = await saveThumbnail(buffer, id);
 
-  return `/uploads/${filename}`;
+  return { url: `/uploads/${filename}`, thumbnailUrl };
 }
 
 const LOGO_ALLOWED_TYPES = new Set([

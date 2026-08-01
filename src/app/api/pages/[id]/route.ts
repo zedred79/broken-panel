@@ -65,14 +65,17 @@ export async function DELETE(
 
   const page = await prisma.page.findUnique({
     where: { id },
-    select: { imageUrl: true },
+    select: { imageUrl: true, thumbnailUrl: true },
   });
   if (!page) {
     return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
   }
 
   await prisma.page.delete({ where: { id } });
-  await deleteUploadedFile(page.imageUrl);
+  await Promise.all([
+    deleteUploadedFile(page.imageUrl),
+    deleteUploadedFile(page.thumbnailUrl),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

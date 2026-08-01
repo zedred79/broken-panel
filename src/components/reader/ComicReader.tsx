@@ -9,6 +9,7 @@ type ReaderPanel = { points: Point[] };
 type ReaderPage = {
   id: string;
   imageUrl: string;
+  thumbnailUrl: string | null;
   width: number;
   height: number;
   panels: ReaderPanel[];
@@ -327,7 +328,7 @@ export function ComicReader({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={page.imageUrl}
+                  src={page.thumbnailUrl ?? page.imageUrl}
                   alt={`Pagina ${i + 1}`}
                   loading="lazy"
                   className="aspect-[3/4] w-full bg-white/5 object-cover"

@@ -26,6 +26,7 @@ export default async function ReadComicPage({
   const pages = comic.pages.map((page) => ({
     id: page.id,
     imageUrl: page.imageUrl,
+    thumbnailUrl: page.thumbnailUrl,
     width: page.width,
     height: page.height,
     panels: page.panels.map((panel) => ({

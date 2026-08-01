@@ -45,6 +45,7 @@ export async function POST(
       comicId,
       order: nextOrder,
       imageUrl: saved.url,
+      thumbnailUrl: saved.thumbnailUrl,
       width: saved.width,
       height: saved.height,
     },

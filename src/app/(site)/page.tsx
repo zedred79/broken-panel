@@ -46,6 +46,7 @@ export default async function HomePage() {
                 sourceWork={comic.sourceWork}
                 style={comic.style}
                 coverImage={comic.coverImage}
+                coverThumbnail={comic.coverThumbnail}
               />
             ))}
           </div>

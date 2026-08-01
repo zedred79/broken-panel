@@ -8,6 +8,7 @@ type PageItem = {
   id: string;
   order: number;
   imageUrl: string;
+  thumbnailUrl: string | null;
   _count: { panels: number };
 };
 
@@ -104,7 +105,7 @@ export function PageManager({
               <Link href={`/admin/comics/${comicId}/pages/${page.id}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={page.imageUrl}
+                  src={page.thumbnailUrl ?? page.imageUrl}
                   alt={`Pagina ${page.order}`}
                   className="aspect-[3/4] w-full object-cover"
                 />

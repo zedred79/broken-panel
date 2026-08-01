@@ -6,6 +6,7 @@ type ComicCardProps = {
   sourceWork: string;
   style: string | null;
   coverImage: string | null;
+  coverThumbnail: string | null;
 };
 
 export function ComicCard({
@@ -14,6 +15,7 @@ export function ComicCard({
   sourceWork,
   style,
   coverImage,
+  coverThumbnail,
 }: ComicCardProps) {
   return (
     <Link
@@ -23,7 +25,7 @@ export function ComicCard({
       <div className="aspect-[2/3] w-full overflow-hidden bg-surface-2">
         {coverImage ? (
           <img
-            src={coverImage}
+            src={coverThumbnail ?? coverImage}
             alt={title}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           />

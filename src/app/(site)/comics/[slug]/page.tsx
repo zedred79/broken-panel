@@ -31,7 +31,7 @@ export default async function ComicDetailPage({
         <div className="aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface">
           {comic.coverImage ? (
             <img
-              src={comic.coverImage}
+              src={comic.coverThumbnail ?? comic.coverImage}
               alt={comic.title}
               className="h-full w-full object-cover"
             />
