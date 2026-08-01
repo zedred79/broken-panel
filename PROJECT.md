@@ -22,18 +22,34 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
   Scaffoldato con `create-next-app`. **Attenzione**: questa versione ha breaking change
   rilevanti rispetto alla conoscenza "di default" di un modello — vedi
   [AGENTS.md](AGENTS.md) e la sezione "Insidie note" più sotto.
-- **Prisma 6** + **SQLite**. Nota: il progetto è partito con Prisma 7, che ha cambiato
-  architettura (richiede `prisma.config.ts` + driver adapter, niente più `url` nello
-  schema) — è stato fatto downgrade a Prisma 6 apposta, che supporta ancora l'approccio
-  classico con `url = env("DATABASE_URL")` nello schema. Non fare l'upgrade a Prisma 7
-  senza motivo.
+- **Prisma 7** + **SQLite**, con driver adapter (`@prisma/adapter-better-sqlite3`).
+  Prisma 7 ha cambiato architettura rispetto alle versioni precedenti: niente più `url`
+  nello schema, la connessione si configura in `prisma.config.ts` (per i comandi CLI:
+  `generate`, `db push`, ecc.) e si passa esplicitamente un `adapter` al costruttore di
+  `PrismaClient` (vedi `src/lib/prisma.ts` e `prisma/seed.ts`). Due insidie scoperte
+  migrando: (1) un `DATABASE_URL` relativo in `prisma.config.ts` si risolve rispetto alla
+  **root del progetto**, non più rispetto a `prisma/` come prima — da qui
+  `file:./prisma/dev.db` invece di `file:./dev.db` in sviluppo; (2) il CLI di Prisma 7
+  **non carica più `.env` automaticamente** (a differenza delle versioni precedenti), per
+  questo sia `prisma.config.ts` sia `prisma/seed.ts` importano esplicitamente
+  `dotenv/config` in cima — senza, `DATABASE_URL` risulterebbe `undefined` in quei
+  contesti (Next.js invece carica `.env` da solo, quindi l'app in sé non ne risente).
+  L'adapter richiede `better-sqlite3`, un modulo nativo compilato — vedi sotto per come
+  questo influenza la scelta dell'immagine Docker.
 - **NextAuth v5 (Auth.js)** con provider Credentials, sessione JWT. Un solo utente admin,
   creato via seed da `ADMIN_EMAIL`/`ADMIN_PASSWORD`. Non c'è registrazione, non c'è
   gestione multi-utente: è una scelta deliberata (uso singolo).
-- **Docker** (Dockerfile multi-stage, `node:20-slim` per compatibilità con gli engine
-  binari di Prisma) + **docker-compose.yml** con porta host non standard (`HOST_PORT`,
-  default 48217, per non entrare in conflitto con gli altri servizi già sul server) e
-  rete esterna condivisa con SWAG.
+- **Docker** (Dockerfile multi-stage). Gli stage `deps`/`builder` usano `node:24` (immagine
+  "piena", basata su `buildpack-deps`) invece di `-slim`: include già gcc/g++/make/python3,
+  necessari per compilare `better-sqlite3` a install time. Lo stage `runner` (quello che
+  finisce in produzione) resta `node:24-slim` — i compilatori restano confinati agli stage
+  intermedi, scartati dal multi-stage build, zero impatto su dimensione/sicurezza
+  dell'immagine finale. `runner` installa anche `libstdc++6` via apt (richiesta a runtime
+  dal binario nativo di `better-sqlite3`) oltre a `openssl` (richiesta dai binari di
+  Prisma). Node 20 è stato abbandonato perché ormai end-of-life (rimosso dal repository
+  immagini ufficiali attivamente mantenuto). + **docker-compose.yml** con porta host non
+  standard (`HOST_PORT`, default 48217, per non entrare in conflitto con gli altri servizi
+  già sul server) e rete esterna condivisa con SWAG.
 
 ## Struttura del progetto
 
@@ -191,8 +207,9 @@ invece non sono in env: si gestiscono da `/admin/settings` (vedi sopra).
   che leggono dal DB e devono mostrare dati sempre aggiornati, ricordati questo export**
   (oppure verifica con `npm run build`: le route dinamiche sono marcate `ƒ`, quelle
   statiche `○`).
-- Prisma 7 è incompatibile con l'approccio usato qui (vedi sopra) — è stato fissato a
-  Prisma 6 di proposito in `package.json`.
+- Il progetto è stato migrato a Prisma 7 (vedi sopra) — se aggiorni ulteriormente Prisma,
+  ricontrolla la compatibilità di `@prisma/adapter-better-sqlite3` con la nuova versione
+  prima di procedere.
 
 ## Stato attuale / cosa manca
 

@@ -2,7 +2,7 @@
 set -e
 
 echo "Broken Panel: syncing database schema..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
   echo "Broken Panel: ensuring admin user exists..."
