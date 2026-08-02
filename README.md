@@ -19,14 +19,33 @@ Apri `http://localhost:3000`, admin su `http://localhost:3000/admin`.
 Le variabili di sviluppo sono in `.env` (già presente, con credenziali di test:
 `admin@brokenpanel.local` / `changeme123` — **cambiale prima di andare in produzione**).
 
-La password si cambia da `/admin/settings` una volta loggati. `npm run db:seed` non la
-tocca più se l'utente esiste già (gira anche ad ogni avvio del container in produzione,
-quindi non deve cancellare un cambio fatto da UI). Se resti bloccato fuori, un reset
-forzato da `ADMIN_PASSWORD` in `.env` resta possibile con:
+## Password admin
 
-```bash
-npm run db:reset-admin-password
-```
+**Uso normale**: una volta loggato, cambiala da `/admin/settings` — non serve mai
+toccare `.env` né riavviare nulla.
+
+**Se resti bloccato fuori** (password dimenticata, non c'è un flusso "password
+dimenticata" via email in questa app), c'è un reset forzato che reimposta la password a
+quella scritta in `ADMIN_EMAIL`/`ADMIN_PASSWORD`:
+
+- **In locale**:
+  ```bash
+  npm run db:reset-admin-password
+  ```
+- **In produzione** (il container non ha `npm` accessibile da fuori, va lanciato dentro
+  con `docker exec`; `broken-panel` è il `container_name` in `docker-compose.yml`):
+  ```bash
+  docker exec broken-panel npx tsx prisma/reset-admin-password.ts
+  ```
+  Modifica prima `ADMIN_PASSWORD` in `.env` sul server se vuoi reimpostarla a un valore
+  diverso da quello attuale, poi ricrea il container perché legga la modifica
+  (`docker compose up -d`) prima di lanciare il reset — altrimenti reimposta alla
+  password già in uso, il che non serve a molto.
+
+Questo comando è pensato per essere lanciato **a mano, apposta**, non automaticamente:
+`npm run db:seed` (che gira da solo ad ogni avvio del container) non tocca mai la
+password di un admin già esistente, proprio per non cancellare un cambio fatto da UI a
+ogni riavvio o aggiornamento immagine.
 
 ## Come funziona il reader
 
