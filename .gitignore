@@ -51,6 +51,9 @@ next-env.d.ts
 # docker-compose.yml — vive solo sul server, non va mai committato
 /data/
 
+# idem, ma per i test locali con docker-compose.local.yml
+/data-local/
+
 # generated Prisma client (regenerated via `npx prisma generate`, includes
 # platform-specific native binaries — must not be committed)
 /src/generated

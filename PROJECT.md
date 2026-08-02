@@ -60,6 +60,10 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
   leggerle). **Insidia**: il container gira come utente non-root (uid 1001) — `./data`
   deve appartenergli fin da subito (`chown -R 1001:1001 data` una tantum prima del primo
   avvio), altrimenti l'app non riesce a scrivere né il DB né gli upload.
+- **docker-compose.local.yml**: variante solo per test locali della build Docker prima
+  di pubblicare su Docker Hub — builda sempre dal codice corrente (mai `image:` da Docker
+  Hub), nessuna rete SWAG richiesta, dati in `./data-local` (stessa insidia dei permessi
+  uid 1001 di sopra). Vedi README per l'uso.
 
 ## Struttura del progetto
 

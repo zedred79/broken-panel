@@ -1,0 +1,33 @@
+# Solo per test locali della build Docker, PRIMA di pubblicare su Docker Hub.
+# Diverso da docker-compose.yml (quello di produzione): builda sempre dal
+# codice corrente (mai da Docker Hub), nessuna rete SWAG richiesta, dati in
+# ./data-local (separata da ./data, per non rischiare di mischiarli se mai
+# girasse sulla stessa macchina di un deploy reale).
+#
+# Uso:
+#   docker compose -f docker-compose.local.yml up -d --build
+#   docker compose -f docker-compose.local.yml logs -f
+#   docker compose -f docker-compose.local.yml down
+#
+# Login: http://localhost:8080/admin — admin@test.local / testpassword123
+# (credenziali fittizie, solo per questo file: non usarle mai in produzione)
+services:
+  broken-panel:
+    build: .
+    container_name: broken-panel-local
+    ports:
+      - "${LOCAL_PORT:-8080}:3000"
+    environment:
+      DATABASE_URL: "file:/data/app.db"
+      UPLOADS_DIR: "/app/uploads"
+      NEXTAUTH_SECRET: "local-test-secret-not-for-production"
+      NEXTAUTH_URL: "http://localhost:${LOCAL_PORT:-8080}"
+      ADMIN_EMAIL: "admin@test.local"
+      ADMIN_PASSWORD: "testpassword123"
+    volumes:
+      # Stessa insidia della produzione: il container gira come uid 1001,
+      # la cartella deve appartenergli fin dall'inizio.
+      #   mkdir -p data-local/db data-local/uploads
+      #   sudo chown -R 1001:1001 data-local
+      - ./data-local/db:/data
+      - ./data-local/uploads:/app/uploads

@@ -57,6 +57,45 @@ ogni riavvio o aggiornamento immagine.
    su ogni vignetta scurendo il resto della tavola con una maschera SVG, con transizioni fluide.
    Navigazione con clic (sinistra/destra dello schermo), frecce ← →, barra spaziatrice.
 
+## Test locale della build Docker
+
+Prima di pubblicare una nuova versione su Docker Hub, conviene provare davvero
+l'immagine di produzione in locale — cattura errori che il dev server (`npm run dev`,
+modalità sviluppo) non mostra (è già successo con un `NEXTAUTH_SECRET` mancante e un
+flag CLI non più supportato da Prisma 7). `docker-compose.local.yml` fa questo senza
+bisogno di un `.env` o di ricordare a memoria un comando `docker run` lungo.
+
+**La prima volta**, come in produzione, la cartella dati deve appartenere all'utente del
+container (uid 1001) *prima* di avviarlo — altrimenti Docker la crea da sola come root e
+l'app non riesce a scriverci:
+
+```bash
+mkdir -p data-local/db data-local/uploads
+sudo chown -R 1001:1001 data-local
+```
+
+Poi:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+Apri `http://localhost:8080/admin` — login `admin@test.local` / `testpassword123`
+(credenziali fittizie valide solo qui, mai da usare in produzione). Per i log e per
+fermarlo:
+
+```bash
+docker compose -f docker-compose.local.yml logs -f
+docker compose -f docker-compose.local.yml down
+```
+
+I dati (DB, upload) restano in `./data-local` tra un riavvio e l'altro — cancella quella
+cartella (e ripeti il `mkdir`/`chown` sopra) se vuoi ripartire da zero.
+
+Rilancia sempre con `--build` dopo aver cambiato codice: senza, `docker compose` può
+riusare l'immagine già costruita in precedenza invece di ricompilare (è il motivo esatto
+per cui una volta il form "Cambia password" non compariva pur essendo già nel codice).
+
 ## Pubblicare l'immagine su Docker Hub
 
 L'immagine è `zedred/broken-panel` (repository **privato**). Va ricostruita e

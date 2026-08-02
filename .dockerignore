@@ -10,3 +10,4 @@ uploads/*
 npm-debug.log*
 .claude
 data/
+data-local/
