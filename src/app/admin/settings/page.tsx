@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SiteSettingsForm } from "@/components/admin/SiteSettingsForm";
+import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { DEFAULT_HEADER_LOGO, DEFAULT_HERO_LOGO } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,10 @@ export default async function SiteSettingsPage() {
           defaultHeroLogo: DEFAULT_HERO_LOGO,
         }}
       />
+
+      <div className="mt-10">
+        <ChangePasswordForm />
+      </div>
     </div>
   );
 }

@@ -90,7 +90,8 @@ src/app/login/                 Login admin (server action + form)
 src/app/read/[slug]/           Il reader immersivo (componente client ComicReader)
 
 src/components/admin/          PanelEditor (slicer poligoni), PageManager, ComicForm,
-                                DeleteComicButton, AdminNav, SiteSettingsForm
+                                DeleteComicButton, AdminNav, SiteSettingsForm,
+                                ChangePasswordForm
 src/components/reader/         ComicReader (la logica di zoom/maschera)
 src/components/site/           Navbar, Footer, ComicCard, ContinueReadingLink
 
@@ -240,8 +241,27 @@ rate-limit sui tentativi di login.
 - `PATCH /api/pages/[id]` (`{direction: "up"|"down"}`), `DELETE /api/pages/[id]`
 - `GET/PUT /api/pages/[id]/panels` — legge/sostituisce l'elenco vignette di una pagina
 - `GET/PUT /api/site-settings` — loghi personalizzati (vedi sotto)
+- `POST /api/account/password` — cambio password admin (vedi sotto)
 
 Tutte protette da `requireAdmin()` (controllo sessione NextAuth lato server).
+
+## Cambio password admin
+
+`/admin/settings` (`ChangePasswordForm.tsx`) permette di cambiare la password
+dell'admin senza dover rifare il seed/riavviare il container. `POST
+/api/account/password` verifica la password attuale con `bcrypt.compare` prima di
+accettare quella nuova (minimo 8 caratteri) — senza questo controllo, chiunque avesse
+accesso a una sessione già autenticata (es. XSS) potrebbe cambiare la password e
+scacciare l'admin legittimo. Dopo il salvataggio il form chiama `signOut()` lato
+client per forzare un nuovo login con le nuove credenziali.
+
+**Limite noto**: le sessioni usano JWT stateless (`session: { strategy: "jwt" }` in
+`src/lib/auth.ts`) — il token non viene mai ri-verificato contro il DB ad ogni
+richiesta, quindi cambiare la password **non invalida altre sessioni già aperte
+altrove** (altri browser/dispositivi restano loggati finché il loro token JWT non
+scade naturalmente). Per un sito a singolo admin il rischio pratico è basso; una
+soluzione completa richiederebbe sessioni lato DB o un claim di versione nel JWT
+controllato ad ogni richiesta — non implementata, sproporzionata per questo caso d'uso.
 
 ## Loghi personalizzabili (Impostazioni sito)
 
@@ -287,13 +307,13 @@ invece non sono in env: si gestiscono da `/admin/settings` (vedi sopra).
 Fatto: sito pubblico, reader con zoom, salto rapido a una pagina specifica e persistenza
 del progresso di lettura tra sessioni (localStorage), area admin completa (CRUD fumetti,
 upload pagine, editor vignette, eliminazione fumetti), auth con rate-limit sui tentativi
-di login, Docker + config SWAG di esempio, testi homepage configurabili da env, loghi
-header/hero personalizzabili da `/admin/settings`, upload con limiti di dimensione e
-validazione del contenuto reale, sanificazione degli SVG caricati come loghi, cleanup dei
-file orfani su delete/replace, thumbnail generati per tavole/copertine.
+di login e cambio password da UI, Docker + config SWAG di esempio (immagine pubblicata su
+Docker Hub, deploy pull-based con cartelle dati mappate), testi homepage configurabili da
+env, loghi header/hero personalizzabili da `/admin/settings`, upload con limiti di
+dimensione e validazione del contenuto reale, sanificazione degli SVG caricati come loghi,
+cleanup dei file orfani su delete/replace, thumbnail generati per tavole/copertine.
 
-Non ancora fatto / possibili prossimi passi: cambio password admin da UI (va ancora
-rifatto il seed/riavviato il container), gestione capitoli/raggruppamento pagine (lo
+Non ancora fatto / possibili prossimi passi: gestione capitoli/raggruppamento pagine (lo
 schema Page ha solo `order` piatto, non capitoli), i18n (tutto è in italiano hardcoded),
 statistiche di lettura (aggregate, lato admin — diverso dal progresso di lettura
 per-visitatore già fatto), commenti/community.
