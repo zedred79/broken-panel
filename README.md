@@ -19,6 +19,15 @@ Apri `http://localhost:3000`, admin su `http://localhost:3000/admin`.
 Le variabili di sviluppo sono in `.env` (già presente, con credenziali di test:
 `admin@brokenpanel.local` / `changeme123` — **cambiale prima di andare in produzione**).
 
+La password si cambia da `/admin/settings` una volta loggati. `npm run db:seed` non la
+tocca più se l'utente esiste già (gira anche ad ogni avvio del container in produzione,
+quindi non deve cancellare un cambio fatto da UI). Se resti bloccato fuori, un reset
+forzato da `ADMIN_PASSWORD` in `.env` resta possibile con:
+
+```bash
+npm run db:reset-admin-password
+```
+
 ## Come funziona il reader
 
 1. In admin carichi la tavola A4 di una pagina (PNG/JPEG/WebP).

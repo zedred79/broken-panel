@@ -3,6 +3,15 @@ import { PrismaClient } from "../src/generated/prisma";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import bcrypt from "bcryptjs";
 
+// A differenza di seed.ts (che gira automaticamente ad ogni avvio del
+// container e non tocca mai un utente già esistente), questo script va
+// eseguito a mano, apposta, quando serve un reset forzato — es. l'admin ha
+// dimenticato la password e non c'è nessun flusso "password dimenticata" in
+// UI. Uso: `npm run db:reset-admin-password` (in locale) o
+// `docker exec <container> npx tsx prisma/reset-admin-password.ts` (in
+// produzione), con ADMIN_EMAIL/ADMIN_PASSWORD impostate nell'ambiente a
+// dovere.
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL non impostata");
 }
@@ -14,24 +23,15 @@ async function main() {
   const email = process.env.ADMIN_EMAIL ?? "admin@brokenpanel.local";
   const password = process.env.ADMIN_PASSWORD ?? "changeme123";
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    // Non tocca mai la password di un utente già esistente: questo script
-    // gira ad ogni avvio del container (docker-entrypoint.sh), non solo la
-    // prima volta. Se aggiornasse sempre passwordHash da ADMIN_PASSWORD,
-    // un cambio password fatto da /admin/settings verrebbe cancellato al
-    // primo riavvio/ricreazione del container. Per un reset forzato vedi
-    // `npm run db:reset-admin-password`.
-    console.log(`Admin user già presente: ${existing.email} (password invariata)`);
-    return;
-  }
-
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await prisma.user.create({
-    data: { email, passwordHash, name: "Admin" },
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash },
+    create: { email, passwordHash, name: "Admin" },
   });
 
-  console.log(`Admin user creato: ${user.email}`);
+  console.log(`Password reimpostata per: ${user.email}`);
 }
 
 main()

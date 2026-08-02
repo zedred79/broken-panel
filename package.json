@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset-admin-password": "tsx prisma/reset-admin-password.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

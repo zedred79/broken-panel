@@ -66,7 +66,10 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
 ```
 prisma.config.ts               Config Prisma 7 (datasource per i comandi CLI, vedi sopra)
 prisma/schema.prisma           Modelli: User, Comic, Page, Panel, SiteSetting
-prisma/seed.ts                 Crea/aggiorna l'utente admin da env
+prisma/seed.ts                 Crea l'admin da env SOLO se non esiste già (gira ad ogni
+                                avvio del container, vedi sotto)
+prisma/reset-admin-password.ts Reset forzato della password admin, solo manuale
+                                (npm run db:reset-admin-password) — vedi sotto
 
 src/lib/
   auth.ts                      Config NextAuth (provider Credentials, callback JWT/session,
@@ -262,6 +265,19 @@ altrove** (altri browser/dispositivi restano loggati finché il loro token JWT n
 scade naturalmente). Per un sito a singolo admin il rischio pratico è basso; una
 soluzione completa richiederebbe sessioni lato DB o un claim di versione nel JWT
 controllato ad ogni richiesta — non implementata, sproporzionata per questo caso d'uso.
+
+**Insidia trovata e corretta** (scattata subito, testando in locale con Docker): prima
+`prisma/seed.ts` faceva un `upsert` che aggiornava sempre `passwordHash` da
+`ADMIN_PASSWORD`. Siccome `docker-entrypoint.sh` esegue il seed **ad ogni avvio del
+container**, non solo la prima volta, un riavvio o un aggiornamento immagine (`docker
+compose pull && up -d`) avrebbe silenziosamente cancellato qualsiasi password cambiata
+da UI, riportandola a quella in `.env`. Ora `seed.ts` crea l'admin solo se non esiste
+già, senza mai toccare la password di un utente esistente. Per un reset forzato
+volontario (es. password dimenticata, non c'è un flusso "password dimenticata" via
+email) resta `prisma/reset-admin-password.ts` (`npm run db:reset-admin-password`,
+oppure `docker exec <container> npx tsx prisma/reset-admin-password.ts` in produzione)
+— stesso comportamento upsert di prima, ma eseguito solo a mano, apposta, non più
+automaticamente ad ogni boot.
 
 ## Loghi personalizzabili (Impostazioni sito)
 
