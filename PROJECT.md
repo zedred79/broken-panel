@@ -3,7 +3,9 @@
 Questo file esiste per permettere a chiunque (umano o AI) riprenda il progetto in una
 sessione nuova di orientarsi rapidamente, senza dover rileggere tutto il codice da zero.
 Il [README.md](README.md) spiega *come far girare* il progetto; questo file spiega
-*perché è fatto così* e dove sono i punti delicati.
+*perché è fatto così* e dove sono i punti delicati. Per l'elenco versionato di tutti i
+componenti (Next.js, Prisma, immagine Docker base, ecc.) con eventuali aggiornamenti già
+tentati e scartati, vedi [COMPONENTS.md](COMPONENTS.md).
 
 ## Cos'è
 
