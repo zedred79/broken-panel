@@ -21,13 +21,15 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 
 | Componente | Versione attuale | Dove è pinnato | Note |
 |---|---|---|---|
-| Next.js | `16.2.12` | `package.json` | App Router + Turbopack. |
-| React / React DOM | `19.2.8` (esatta, non `^`) | `package.json` | Pinnata esatta di proposito (non `^`) — verificare se serve ancora al prossimo bump. |
-| NextAuth (Auth.js) | `^5.0.0-beta.32` | `package.json` | Ancora in beta a monte — controllare se è uscita una v5 stabile prima di aggiornare, potrebbe cambiare API. |
-| Tailwind CSS | `^4` | `package.json` | Via `@tailwindcss/postcss`. |
-| TypeScript | `^5` (attualmente 5.9.x) | `package.json` | **TypeScript 7 testato e scartato**: rompe sia `typescript-eslint` (non supporta ancora TS7) sia la build Next.js (richiede un'API del compiler che TS7 — il nuovo compiler nativo Go — non espone ancora). Ritestare quando l'ecosistema si aggiorna. |
-| ESLint | `^9` (attualmente 9.x) | `package.json` | **ESLint 10 testato e scartato**: `eslint-plugin-react` (via `eslint-config-next`) chiama `context.getFilename()`, rimosso in ESLint 10 → crash `TypeError: contextOrFilename.getFilename is not a function`. Ritestare quando `eslint-config-next`/`eslint-plugin-react` si aggiornano. |
+| Next.js | `16.3.0` | `package.json` | App Router + Turbopack. Aggiornata da 16.2.12 il 2026-08-05: la 16.2.12 trascinava (nei suoi `node_modules` interni, non nelle dipendenze dirette del progetto) versioni vulnerabili di `postcss` (XSS/path traversal via `sourceMappingURL`) e `sharp`/libvips (CVE-2026-33327/33328/35590/35591) — `npm audit` segnalava 3 vulnerabilità high. Verificato dopo l'update: `npm audit` pulito, `npm run build` e `npm run lint` ok (solo warning preesistenti). |
+| React / React DOM | `19.2.8` (esatta, non `^`) | `package.json` | Pinnata esatta di proposito (non `^`) — verificare se serve ancora al prossimo bump. Confermata più recente al 2026-08-05. |
+| NextAuth (Auth.js) | `^5.0.0-beta.32` | `package.json` | Ancora in beta a monte (verificato 2026-08-05, nessuna beta più recente disponibile) — controllare se è uscita una v5 stabile prima di aggiornare, potrebbe cambiare API. |
+| Tailwind CSS | `^4` (risolta a 4.3.3) | `package.json` | Via `@tailwindcss/postcss`. Già alla più recente nel range al 2026-08-05. |
+| TypeScript | `^5` (attualmente 5.9.x) | `package.json` | **TypeScript 7 ancora bloccato** (ricontrollato 2026-08-05): `typescript-eslint@8.65.0` (l'ultima, tirata da `eslint-config-next`) dichiara ancora `peerDependency typescript: ">=4.8.4 <6.1.0"` — non supporta TS7. Ritestare quando `typescript-eslint` alza il range. |
+| ESLint | `^9` (attualmente 9.x) | `package.json` | **ESLint 10 ancora bloccato** (ricontrollato 2026-08-05): `eslint-plugin-react@7.37.5` (l'ultima) dichiara ancora peer `eslint: "^3...^9.7"`, niente `^10`. Ritestare quando `eslint-config-next`/`eslint-plugin-react` si aggiornano. |
 | npm | quella imbustata nell'immagine `node:24` | `Dockerfile` (indiretto) | Il warning "New major version of npm available" visto nei build log è npm che segnala se stesso, non un pacchetto del progetto — non richiede azione a meno di voler aggiornare npm nell'immagine base. |
+| `@types/node` | `^24` | `package.json` (devDependency) | Solo tipi per il type-checking in dev, non influisce sul runtime. Allineata alla major di Node effettivamente usata in Docker (`node:24`) il 2026-08-05 — prima era rimasta `^20`, disallineata rispetto al runtime reale. |
+| `tsx` | `^4.23.7` | `package.json` (devDependency) | Usato per eseguire `prisma/seed.ts` e `prisma/reset-admin-password.ts`. Già alla più recente al 2026-08-05. |
 
 ## Database / ORM
 
@@ -42,7 +44,7 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 
 | Componente | Versione attuale | Dove è pinnato | Note |
 |---|---|---|---|
-| `dompurify` + `jsdom` | `^3.4.12` / `^30.0.1` | `package.json` | Sanitizzazione SVG caricati (loghi) contro XSS (`script`, `onload`, `foreignObject`). |
+| `dompurify` + `jsdom` | `^3.4.13` / `^30.0.1` | `package.json` | Sanitizzazione SVG caricati (loghi) contro XSS (`script`, `onload`, `foreignObject`). Già alla più recente al 2026-08-05. |
 | `image-size` | `^2.0.2` | `package.json` | Validazione "magic bytes" per confermare che il formato reale di un'immagine raster corrisponda al MIME dichiarato. |
 | `bcryptjs` | `^3.0.3` | `package.json` | Hashing password, cost factor 12 in tutto il codice (`src/lib/prisma.ts`-adiacenti, `seed.ts`, API cambio password). |
 | Rate limiting login | in-memory, nessuna dipendenza esterna | `src/lib/login-rate-limit.ts` | Scelta deliberata (single-admin app) — non serve Redis/altro. Si azzera al riavvio del processo, accettabile per questo caso d'uso. |
@@ -51,7 +53,7 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 
 | Componente | Versione attuale | Dove è pinnato | Note |
 |---|---|---|---|
-| `sharp` | `^0.35.3` | `package.json` | Genera thumbnail WebP (480px larghezza) per copertine e pagine. Richiede binari nativi precompilati per piattaforma — verificare compatibilità piattaforma ad ogni bump major. |
+| `sharp` | `^0.35.3` | `package.json` | Genera thumbnail WebP (480px larghezza) per copertine e pagine. Richiede binari nativi precompilati per piattaforma — verificare compatibilità piattaforma ad ogni bump major. Già alla più recente al 2026-08-05 (da non confondere con la copia interna vulnerabile che Next.js portava con sé prima dell'update a 16.3.0, vedi sopra). |
 
 ## Come usare questo file
 
