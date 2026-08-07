@@ -13,7 +13,7 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 
 | Componente | Versione attuale | Dove è pinnato | Note |
 |---|---|---|---|
-| Node.js (Docker) | `node:24` (build) / `node:24-slim` (runtime) | `Dockerfile` | Node 24 = Active LTS più recente al momento della scelta. Node 20 è EOL (fine supporto 2026-04-30, già passato), va evitato come base image. Ricontrollare quando Node 24 uscirà da Active LTS. |
+| Node.js (Docker) | `node:24` (build) / `node:24-slim` (runtime) | `Dockerfile` | Node 24 = Active LTS più recente al momento della scelta. Node 20 è EOL (fine supporto 2026-04-30, già passato), va evitato come base image. Riverificato 2026-08-07 sullo schedule ufficiale Node.js: Node 24 resta Active LTS fino al 2026-10-20 (poi Maintenance fino al 2028-04-30); Node 26 è "Current" dal 2026-05-05 ma diventa LTS solo il 2026-10-28 — troppo presto per usarlo come base image di produzione. Ricontrollare dopo il 2026-10-20. |
 | Node.js (locale, sandbox dev) | v26.5.0 (ambiente di sviluppo, non l'immagine Docker) | n/a — non pinnato in repo | Solo l'ambiente locale di sviluppo; l'immagine Docker resta la fonte di verità per la produzione. |
 | Debian base (`-slim`) | ereditata da `node:24-slim` | `Dockerfile` | Richiede `openssl` + `libstdc++6` installati esplicitamente (Prisma engine + `better-sqlite3` nativo). |
 
@@ -25,11 +25,11 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 | React / React DOM | `19.2.8` (esatta, non `^`) | `package.json` | Pinnata esatta di proposito (non `^`) — verificare se serve ancora al prossimo bump. Confermata più recente al 2026-08-05. |
 | NextAuth (Auth.js) | `^5.0.0-beta.32` | `package.json` | Ancora in beta a monte (verificato 2026-08-05, nessuna beta più recente disponibile) — controllare se è uscita una v5 stabile prima di aggiornare, potrebbe cambiare API. |
 | Tailwind CSS | `^4` (risolta a 4.3.3) | `package.json` | Via `@tailwindcss/postcss`. Già alla più recente nel range al 2026-08-05. |
-| TypeScript | `^5` (attualmente 5.9.x) | `package.json` | **TypeScript 7 ancora bloccato** (ricontrollato 2026-08-05): `typescript-eslint@8.65.0` (l'ultima, tirata da `eslint-config-next`) dichiara ancora `peerDependency typescript: ">=4.8.4 <6.1.0"` — non supporta TS7. Ritestare quando `typescript-eslint` alza il range. |
-| ESLint | `^9` (attualmente 9.x) | `package.json` | **ESLint 10 ancora bloccato** (ricontrollato 2026-08-05): `eslint-plugin-react@7.37.5` (l'ultima) dichiara ancora peer `eslint: "^3...^9.7"`, niente `^10`. Ritestare quando `eslint-config-next`/`eslint-plugin-react` si aggiornano. |
+| TypeScript | `^6` (attualmente 6.0.3) | `package.json` | Aggiornata da `^5` (5.9.x) il 2026-08-07: `typescript-eslint@8.65.0` dichiara `peerDependency typescript: ">=4.8.4 <6.1.0"`, quindi la serie 6.0.x (uscita 2026-03/04, non vista nel check del 2026-08-05) rientra nel range supportato. **TypeScript 7 resta bloccato** invece: fuori dal range `<6.1.0`. Verificato `npm run build` e `npm run lint` puliti dopo il bump (solo warning preesistenti). Ritestare TS7 quando `typescript-eslint` alza il range. |
+| ESLint | `^9` (attualmente 9.x) | `package.json` | **ESLint 10 ancora bloccato** (ricontrollato 2026-08-07): `typescript-eslint@8.65.0` ora accetta anche `eslint: "^10.0.0"`, ma `eslint-plugin-react@7.37.5` (l'ultima, tirata da `eslint-config-next`) dichiara ancora peer `eslint: "^3...^9.7"`, niente `^10` — è lui il blocco residuo. Ritestare quando `eslint-plugin-react` si aggiorna. |
 | npm | quella imbustata nell'immagine `node:24` | `Dockerfile` (indiretto) | Il warning "New major version of npm available" visto nei build log è npm che segnala se stesso, non un pacchetto del progetto — non richiede azione a meno di voler aggiornare npm nell'immagine base. |
 | `@types/node` | `^24` | `package.json` (devDependency) | Solo tipi per il type-checking in dev, non influisce sul runtime. Allineata alla major di Node effettivamente usata in Docker (`node:24`) il 2026-08-05 — prima era rimasta `^20`, disallineata rispetto al runtime reale. |
-| `tsx` | `^4.23.7` | `package.json` (devDependency) | Usato per eseguire `prisma/seed.ts` e `prisma/reset-admin-password.ts`. Già alla più recente al 2026-08-05. |
+| `tsx` | `^4.23.10` | `package.json` (devDependency) | Usato per eseguire `prisma/seed.ts` e `prisma/reset-admin-password.ts`. Aggiornata da `^4.23.7` (patch) il 2026-08-07, già alla più recente. |
 
 ## Database / ORM
 
@@ -48,6 +48,7 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 | `image-size` | `^2.0.2` | `package.json` | Validazione "magic bytes" per confermare che il formato reale di un'immagine raster corrisponda al MIME dichiarato. |
 | `bcryptjs` | `^3.0.3` | `package.json` | Hashing password, cost factor 12 in tutto il codice (`src/lib/prisma.ts`-adiacenti, `seed.ts`, API cambio password). |
 | Rate limiting login | in-memory, nessuna dipendenza esterna | `src/lib/login-rate-limit.ts` | Scelta deliberata (single-admin app) — non serve Redis/altro. Si azzera al riavvio del processo, accettabile per questo caso d'uso. |
+| `js-yaml` (transitiva, via `eslint` → `@eslint/eslintrc`) | `4.3.1` | `package-lock.json` (non diretta) | `npm audit` segnalava high il 2026-08-07: CVE-2026-59870, quadratic CPU consumption nella risoluzione `!!omap` (3.x e 4.x < 4.3.1). Risolta con `npm audit fix` (bump automatico del lockfile, nessuna modifica a `package.json`). Solo devDependency (eslint), non tocca il runtime di produzione. |
 
 ## Immagini / thumbnail
 
