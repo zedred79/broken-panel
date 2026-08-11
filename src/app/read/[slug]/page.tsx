@@ -17,7 +17,10 @@ export default async function ReadComicPage({
     include: {
       pages: {
         orderBy: { order: "asc" },
-        include: { panels: { orderBy: { order: "asc" } } },
+        include: {
+          panels: { orderBy: { order: "asc" } },
+          chapter: { select: { title: true } },
+        },
       },
     },
   });
@@ -32,6 +35,7 @@ export default async function ReadComicPage({
     thumbnailUrl: page.thumbnailUrl,
     width: page.width,
     height: page.height,
+    chapterTitle: page.chapter?.title ?? null,
     panels: page.panels.map((panel) => ({
       points: JSON.parse(panel.points) as { x: number; y: number }[],
     })),

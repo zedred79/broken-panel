@@ -1,0 +1,173 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type ChapterItem = {
+  id: string;
+  title: string;
+};
+
+export function ChapterManager({
+  comicId,
+  chapters,
+}: {
+  comicId: string;
+  chapters: ChapterItem[];
+}) {
+  const router = useRouter();
+  const [newTitle, setNewTitle] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    const title = newTitle.trim();
+    if (!title) return;
+
+    setCreating(true);
+    setError(null);
+    const res = await fetch(`/api/comics/${comicId}/chapters`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      setError(json.error ?? "Errore imprevisto");
+    } else {
+      setNewTitle("");
+      router.refresh();
+    }
+    setCreating(false);
+  }
+
+  async function move(chapterId: string, direction: "up" | "down") {
+    setBusyId(chapterId);
+    await fetch(`/api/chapters/${chapterId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ direction }),
+    });
+    router.refresh();
+    setBusyId(null);
+  }
+
+  async function rename(chapterId: string) {
+    const title = renameValue.trim();
+    if (!title) {
+      setRenamingId(null);
+      return;
+    }
+    setBusyId(chapterId);
+    await fetch(`/api/chapters/${chapterId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    setRenamingId(null);
+    router.refresh();
+    setBusyId(null);
+  }
+
+  async function remove(chapterId: string) {
+    if (!confirm("Eliminare questo capitolo? Le sue pagine resteranno, senza capitolo.")) return;
+    setBusyId(chapterId);
+    await fetch(`/api/chapters/${chapterId}`, { method: "DELETE" });
+    router.refresh();
+    setBusyId(null);
+  }
+
+  return (
+    <div>
+      <h2 className="font-display mb-4 text-2xl tracking-wide">Capitoli</h2>
+
+      {error && (
+        <p className="mb-4 rounded border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent">
+          {error}
+        </p>
+      )}
+
+      {chapters.length === 0 ? (
+        <p className="mb-4 text-muted">Nessun capitolo. Le pagine sono elencate come un unico blocco.</p>
+      ) : (
+        <ul className="mb-4 space-y-2">
+          {chapters.map((chapter, i) => (
+            <li
+              key={chapter.id}
+              className="flex items-center justify-between gap-3 rounded border border-border bg-surface px-3 py-2"
+            >
+              {renamingId === chapter.id ? (
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => rename(chapter.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") rename(chapter.id);
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 text-sm outline-none focus:border-accent"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    setRenamingId(chapter.id);
+                    setRenameValue(chapter.title);
+                  }}
+                  className="flex-1 text-left text-sm hover:underline"
+                >
+                  {chapter.title}
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  disabled={busyId === chapter.id || i === 0}
+                  onClick={() => move(chapter.id, "up")}
+                  className="rounded border border-border px-2 py-1 disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  disabled={busyId === chapter.id || i === chapters.length - 1}
+                  onClick={() => move(chapter.id, "down")}
+                  className="rounded border border-border px-2 py-1 disabled:opacity-30"
+                >
+                  ↓
+                </button>
+                <button
+                  disabled={busyId === chapter.id}
+                  onClick={() => remove(chapter.id)}
+                  className="text-accent hover:underline"
+                >
+                  Elimina
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={create} className="flex gap-2">
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Titolo nuovo capitolo"
+          className="flex-1 rounded border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        <button
+          type="submit"
+          disabled={creating || !newTitle.trim()}
+          className="rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
+        >
+          {creating ? "Creazione..." : "+ Nuovo capitolo"}
+        </button>
+      </form>
+    </div>
+  );
+}

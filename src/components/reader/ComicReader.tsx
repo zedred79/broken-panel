@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearReadingProgress, saveReadingProgress } from "@/lib/reading-progress";
@@ -13,6 +13,7 @@ type ReaderPage = {
   thumbnailUrl: string | null;
   width: number;
   height: number;
+  chapterTitle: string | null;
   panels: ReaderPanel[];
 };
 
@@ -71,6 +72,10 @@ export function ComicReader({
 
   const currentPage = pages[pageIndex];
   const panels = currentPage?.panels ?? [];
+  const hasChapters = useMemo(
+    () => pages.some((p) => p.chapterTitle !== null),
+    [pages]
+  );
 
   const goNext = useCallback(() => {
     setHintVisible(false);
@@ -198,6 +203,9 @@ export function ComicReader({
         </Link>
         <span className="font-display truncate px-4 text-sm tracking-wide text-white/70">
           {title}
+          {currentPage?.chapterTitle && (
+            <span className="ml-2 text-white/40">— {currentPage.chapterTitle}</span>
+          )}
         </span>
         <button
           onClick={() => setPickerOpen(true)}
@@ -326,28 +334,40 @@ export function ComicReader({
             className="grid flex-1 auto-rows-max grid-cols-3 gap-4 overflow-y-auto px-6 pb-8 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {pages.map((page, i) => (
-              <button
-                key={page.id}
-                onClick={() => jumpToPage(i)}
-                className={`overflow-hidden rounded border-2 text-left transition ${
-                  i === pageIndex
-                    ? "border-accent"
-                    : "border-transparent hover:border-white/30"
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={page.thumbnailUrl ?? page.imageUrl}
-                  alt={`Pagina ${i + 1}`}
-                  loading="lazy"
-                  className="aspect-[3/4] w-full bg-white/5 object-cover"
-                />
-                <span className="block bg-black/60 py-1 text-center text-xs text-white/70">
-                  {i + 1}
-                </span>
-              </button>
-            ))}
+            {pages.map((page, i) => {
+              const showHeader =
+                hasChapters &&
+                (i === 0 || pages[i - 1].chapterTitle !== page.chapterTitle);
+
+              return (
+                <Fragment key={page.id}>
+                  {showHeader && (
+                    <h3 className="col-span-full mt-2 first:mt-0 font-display text-sm tracking-wide text-white/60">
+                      {page.chapterTitle ?? "Senza capitolo"}
+                    </h3>
+                  )}
+                  <button
+                    onClick={() => jumpToPage(i)}
+                    className={`overflow-hidden rounded border-2 text-left transition ${
+                      i === pageIndex
+                        ? "border-accent"
+                        : "border-transparent hover:border-white/30"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={page.thumbnailUrl ?? page.imageUrl}
+                      alt={`Pagina ${i + 1}`}
+                      loading="lazy"
+                      className="aspect-[3/4] w-full bg-white/5 object-cover"
+                    />
+                    <span className="block bg-black/60 py-1 text-center text-xs text-white/70">
+                      {i + 1}
+                    </span>
+                  </button>
+                </Fragment>
+              );
+            })}
           </div>
         </div>
       )}

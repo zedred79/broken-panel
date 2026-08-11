@@ -14,15 +14,31 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const direction = body?.direction;
-
-  if (direction !== "up" && direction !== "down") {
-    return NextResponse.json({ error: "direction non valida" }, { status: 400 });
-  }
 
   const page = await prisma.page.findUnique({ where: { id } });
   if (!page) {
     return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+  }
+
+  if ("chapterId" in body) {
+    const chapterId = body.chapterId;
+    if (chapterId !== null && typeof chapterId !== "string") {
+      return NextResponse.json({ error: "chapterId non valido" }, { status: 400 });
+    }
+    if (chapterId) {
+      const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+      if (!chapter || chapter.comicId !== page.comicId) {
+        return NextResponse.json({ error: "Capitolo non trovato" }, { status: 404 });
+      }
+    }
+    const updated = await prisma.page.update({ where: { id }, data: { chapterId } });
+    return NextResponse.json({ page: updated });
+  }
+
+  const direction = body?.direction;
+
+  if (direction !== "up" && direction !== "down") {
+    return NextResponse.json({ error: "direction non valida" }, { status: 400 });
   }
 
   const neighbor = await prisma.page.findFirst({

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ComicForm } from "@/components/admin/ComicForm";
 import { PageManager } from "@/components/admin/PageManager";
+import { ChapterManager } from "@/components/admin/ChapterManager";
 import { DeleteComicButton } from "@/components/admin/DeleteComicButton";
 
 export default async function EditComicPage({
@@ -17,6 +18,9 @@ export default async function EditComicPage({
       pages: {
         orderBy: { order: "asc" },
         include: { _count: { select: { panels: true } } },
+      },
+      chapters: {
+        orderBy: { order: "asc" },
       },
     },
   });
@@ -44,7 +48,9 @@ export default async function EditComicPage({
         />
       </div>
 
-      <PageManager comicId={comic.id} pages={comic.pages} />
+      <ChapterManager comicId={comic.id} chapters={comic.chapters} />
+
+      <PageManager comicId={comic.id} pages={comic.pages} chapters={comic.chapters} />
 
       <div className="rounded-lg border border-accent/30 bg-accent/5 p-6">
         <h2 className="font-display mb-1 text-xl tracking-wide">

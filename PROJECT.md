@@ -94,12 +94,12 @@ src/proxy.ts                  Ex "middleware.ts" (rinominato in Next 16, vedi so
 
 src/app/(site)/                Sito pubblico: home, /comics/[slug]
 src/app/admin/                 Area admin (dashboard, editor fumetto, editor vignette)
-src/app/api/                   Route handler REST per comics/pages/panels
+src/app/api/                   Route handler REST per comics/pages/panels/chapters
 src/app/login/                 Login admin (server action + form)
 src/app/read/[slug]/           Il reader immersivo (componente client ComicReader)
 
-src/components/admin/          PanelEditor (slicer poligoni), PageManager, ComicForm,
-                                DeleteComicButton, AdminNav, SiteSettingsForm,
+src/components/admin/          PanelEditor (slicer poligoni), PageManager, ChapterManager,
+                                ComicForm, DeleteComicButton, AdminNav, SiteSettingsForm,
                                 ChangePasswordForm
 src/components/reader/         ComicReader (la logica di zoom/maschera)
 src/components/site/           Navbar, Footer, ComicCard, ContinueReadingLink
@@ -111,22 +111,37 @@ src/generated/prisma/          Client Prisma generato — NON committato (vedi .
 ## Modello dati (prisma/schema.prisma)
 
 ```
-User   { email, passwordHash }                         — un solo record, l'admin
-Comic  { slug, title, sourceWork, author, description,
-         style, coverImage, coverThumbnail,
-         status: draft|published }
-Page   { comicId, order, imageUrl, thumbnailUrl,        — una tavola A4 caricata
-         width, height }
-Panel  { pageId, order, points: JSON stringify di       — poligono libero di una vignetta,
-         [{x,y}, ...] in percentuale 0-100 }              coordinate % relative all'immagine
-SiteSetting { id: "singleton", headerLogo?, heroLogo? } — riga unica, loghi personalizzati
+User    { email, passwordHash }                         — un solo record, l'admin
+Comic   { slug, title, sourceWork, author, description,
+          style, coverImage, coverThumbnail,
+          status: draft|published }
+Chapter { comicId, title, order }                        — etichetta di raggruppamento,
+                                                             vedi sotto
+Page    { comicId, order, chapterId?,                    — una tavola A4 caricata
+          imageUrl, thumbnailUrl, width, height }
+Panel   { pageId, order, points: JSON stringify di       — poligono libero di una vignetta,
+          [{x,y}, ...] in percentuale 0-100 }               coordinate % relative all'immagine
+SiteSetting { id: "singleton", headerLogo?, heroLogo? }  — riga unica, loghi personalizzati
 ```
 
 `coverThumbnail`/`thumbnailUrl` (WebP 480px, generati all'upload — vedi sezione hardening
-upload più sotto) sono nullable perché aggiunti con un `db push` additivo: i fumetti/pagine
-caricati prima di questa modifica hanno questi campi `NULL` e continuano a funzionare — i
-componenti che li usano fanno fallback all'originale (`thumbnailUrl ?? imageUrl`), nessun
-backfill retroattivo è stato fatto.
+upload più sotto) e `Page.chapterId` sono nullable perché aggiunti con un `db push`
+additivo: i fumetti/pagine caricati prima di queste modifiche continuano a funzionare — i
+componenti che li usano fanno fallback all'originale (`thumbnailUrl ?? imageUrl`) o alla
+condizione "senza capitolo" (`chapterId === null`), nessun backfill retroattivo è stato
+fatto.
+
+**Capitoli**: `Chapter` è puramente un'etichetta di navigazione, non un secondo asse di
+ordinamento — l'ordine di lettura resta interamente `Page.order` (invariato). L'admin
+assegna ogni pagina a un capitolo via dropdown in `PageManager`
+(`PATCH /api/pages/[id]` con `{chapterId}`); `PageManager` e il picker pagine del reader
+(`ComicReader.tsx`) raggruppano visivamente scorrendo l'array di pagine già ordinato e
+inserendo un header ogni volta che il `chapterId`/titolo cambia — nessuna gestione
+speciale se le pagine di un capitolo non sono contigue, compaiono semplicemente più
+gruppi. Eliminare un capitolo (`DELETE /api/chapters/[id]`) sgancia le sue pagine
+(`onDelete: SetNull`), non le cancella. Riordino capitoli via
+`PATCH /api/chapters/[id] {direction}`, stesso pattern di swap con `order: -1`
+temporaneo già usato per le pagine.
 
 I punti dei poligoni sono salvati come **percentuali** (0-100) dell'immagine, non pixel
 assoluti — è la scelta chiave che rende tutto il resto (editor + reader) indipendente
@@ -247,8 +262,12 @@ rate-limit sui tentativi di login.
   form-data, gestisce anche l'upload della copertina)
 - `POST /api/comics/[id]/pages` — upload di una tavola (multipart, legge le dimensioni
   reali dell'immagine con la libreria `image-size`)
-- `PATCH /api/pages/[id]` (`{direction: "up"|"down"}`), `DELETE /api/pages/[id]`
+- `PATCH /api/pages/[id]` (`{direction: "up"|"down"}` per riordinare, oppure
+  `{chapterId: string|null}` per assegnare/rimuovere il capitolo), `DELETE /api/pages/[id]`
 - `GET/PUT /api/pages/[id]/panels` — legge/sostituisce l'elenco vignette di una pagina
+- `POST /api/comics/[id]/chapters` — crea un capitolo
+- `PATCH /api/chapters/[id]` (`{direction}` per riordinare, `{title}` per rinominare),
+  `DELETE /api/chapters/[id]`
 - `GET/PUT /api/site-settings` — loghi personalizzati (vedi sotto)
 - `POST /api/account/password` — cambio password admin (vedi sotto)
 
@@ -333,12 +352,16 @@ di login e cambio password da UI, Docker + config SWAG di esempio (immagine pubb
 Docker Hub, deploy pull-based con cartelle dati mappate), testi homepage configurabili da
 env, loghi header/hero personalizzabili da `/admin/settings`, upload con limiti di
 dimensione e validazione del contenuto reale, sanificazione degli SVG caricati come loghi,
-cleanup dei file orfani su delete/replace, thumbnail generati per tavole/copertine.
+cleanup dei file orfani su delete/replace, thumbnail generati per tavole/copertine,
+capitoli come etichetta di raggruppamento sopra l'ordine di lettura piatto (gestione da
+`ChapterManager` in admin, raggruppamento nel picker pagine del reader — vedi sopra).
 
-Non ancora fatto / possibili prossimi passi: gestione capitoli/raggruppamento pagine (lo
-schema Page ha solo `order` piatto, non capitoli), i18n (tutto è in italiano hardcoded),
-statistiche di lettura (aggregate, lato admin — diverso dal progresso di lettura
-per-visitatore già fatto), commenti/community.
+Non ancora fatto / possibili prossimi passi: riordino drag&drop delle pagine
+per-capitolo (oggi l'ordine resta globale sul fumetto, senza enforcement di contiguità
+tra pagine dello stesso capitolo), i18n (tutto è in italiano hardcoded), statistiche di
+lettura (aggregate, lato admin — diverso dal progresso di lettura per-visitatore già
+fatto), commenti/community, test automatizzati (nessuno presente, verifica solo tramite
+`npm run build`/lint + test manuale).
 
 ## Comandi utili
 

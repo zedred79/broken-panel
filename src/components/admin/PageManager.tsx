@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,15 +9,23 @@ type PageItem = {
   order: number;
   imageUrl: string;
   thumbnailUrl: string | null;
+  chapterId: string | null;
   _count: { panels: number };
+};
+
+type ChapterOption = {
+  id: string;
+  title: string;
 };
 
 export function PageManager({
   comicId,
   pages,
+  chapters,
 }: {
   comicId: string;
   pages: PageItem[];
+  chapters: ChapterOption[];
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +76,20 @@ export function PageManager({
     setBusyId(null);
   }
 
+  async function assignChapter(pageId: string, chapterId: string | null) {
+    setBusyId(pageId);
+    await fetch(`/api/pages/${pageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chapterId }),
+    });
+    router.refresh();
+    setBusyId(null);
+  }
+
+  const chapterTitleById = new Map(chapters.map((c) => [c.id, c.title]));
+  const showGroupHeaders = chapters.length > 0;
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -97,59 +119,94 @@ export function PageManager({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {pages.map((page, i) => (
-            <div
-              key={page.id}
-              className="overflow-hidden rounded-lg border border-border bg-surface"
-            >
-              <Link href={`/admin/comics/${comicId}/pages/${page.id}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={page.thumbnailUrl ?? page.imageUrl}
-                  alt={`Pagina ${page.order}`}
-                  className="aspect-[3/4] w-full object-cover"
-                />
-              </Link>
-              <div className="p-3">
-                <p className="text-sm font-medium">Pagina {i + 1}</p>
-                <p className="text-xs text-muted">
-                  {page._count.panels} vignette
-                  {page._count.panels === 0 && " — da ritagliare"}
-                </p>
-                <div className="mt-2 flex items-center justify-between text-xs">
-                  <div className="flex gap-2">
-                    <button
-                      disabled={busyId === page.id || i === 0}
-                      onClick={() => move(page.id, "up")}
-                      className="rounded border border-border px-2 py-1 disabled:opacity-30"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      disabled={busyId === page.id || i === pages.length - 1}
-                      onClick={() => move(page.id, "down")}
-                      className="rounded border border-border px-2 py-1 disabled:opacity-30"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                  <button
-                    disabled={busyId === page.id}
-                    onClick={() => remove(page.id)}
-                    className="text-accent hover:underline"
+          {pages.map((page, i) => {
+            const showHeader =
+              showGroupHeaders &&
+              (i === 0 || pages[i - 1].chapterId !== page.chapterId);
+
+            return (
+              <Fragment key={page.id}>
+                {showHeader && (
+                  <h3
+                    key={`header-${page.id}`}
+                    className="col-span-full mt-2 first:mt-0 text-sm font-semibold uppercase tracking-wide text-muted"
                   >
-                    Elimina
-                  </button>
-                </div>
-                <Link
-                  href={`/admin/comics/${comicId}/pages/${page.id}`}
-                  className="mt-2 block text-center text-xs text-accent hover:underline"
+                    {page.chapterId
+                      ? chapterTitleById.get(page.chapterId) ?? "Capitolo"
+                      : "Senza capitolo"}
+                  </h3>
+                )}
+                <div
+                  key={page.id}
+                  className="overflow-hidden rounded-lg border border-border bg-surface"
                 >
-                  Ritaglia vignette →
-                </Link>
-              </div>
-            </div>
-          ))}
+                  <Link href={`/admin/comics/${comicId}/pages/${page.id}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={page.thumbnailUrl ?? page.imageUrl}
+                      alt={`Pagina ${page.order}`}
+                      className="aspect-[3/4] w-full object-cover"
+                    />
+                  </Link>
+                  <div className="p-3">
+                    <p className="text-sm font-medium">Pagina {i + 1}</p>
+                    <p className="text-xs text-muted">
+                      {page._count.panels} vignette
+                      {page._count.panels === 0 && " — da ritagliare"}
+                    </p>
+                    {chapters.length > 0 && (
+                      <select
+                        value={page.chapterId ?? ""}
+                        disabled={busyId === page.id}
+                        onChange={(e) =>
+                          assignChapter(page.id, e.target.value || null)
+                        }
+                        className="mt-2 w-full rounded border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-accent"
+                      >
+                        <option value="">Senza capitolo</option>
+                        {chapters.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <div className="flex gap-2">
+                        <button
+                          disabled={busyId === page.id || i === 0}
+                          onClick={() => move(page.id, "up")}
+                          className="rounded border border-border px-2 py-1 disabled:opacity-30"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          disabled={busyId === page.id || i === pages.length - 1}
+                          onClick={() => move(page.id, "down")}
+                          className="rounded border border-border px-2 py-1 disabled:opacity-30"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                      <button
+                        disabled={busyId === page.id}
+                        onClick={() => remove(page.id)}
+                        className="text-accent hover:underline"
+                      >
+                        Elimina
+                      </button>
+                    </div>
+                    <Link
+                      href={`/admin/comics/${comicId}/pages/${page.id}`}
+                      className="mt-2 block text-center text-xs text-accent hover:underline"
+                    >
+                      Ritaglia vignette →
+                    </Link>
+                  </div>
+                </div>
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </div>
