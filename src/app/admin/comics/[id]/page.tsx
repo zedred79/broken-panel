@@ -54,11 +54,10 @@ export default async function EditComicPage({
 
       <div className="rounded-lg border border-accent/30 bg-accent/5 p-6">
         <h2 className="font-display mb-1 text-xl tracking-wide">
-          Zona pericolosa
+          Danger zone
         </h2>
         <p className="mb-4 text-sm text-muted">
-          Elimina definitivamente questo fumetto, tutte le sue pagine e
-          vignette.
+          Permanently delete this comic, all its pages and panels.
         </p>
         <DeleteComicButton
           comicId={comic.id}

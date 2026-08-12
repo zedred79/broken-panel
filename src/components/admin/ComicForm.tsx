@@ -39,7 +39,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json.error ?? "Errore imprevisto");
+        setError(json.error ?? "Unexpected error");
         setPending(false);
         return;
       }
@@ -51,7 +51,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
         setPending(false);
       }
     } catch {
-      setError("Errore di rete");
+      setError("Network error");
       setPending(false);
     }
   }
@@ -69,7 +69,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
 
       <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
         <div>
-          <label className="mb-1 block text-sm text-muted">Copertina</label>
+          <label className="mb-1 block text-sm text-muted">Cover</label>
           <div className="aspect-[2/3] w-full overflow-hidden rounded border border-border bg-surface-2">
             {coverPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -95,7 +95,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
         <div className="space-y-4">
           <div>
             <label htmlFor="title" className="mb-1 block text-sm text-muted">
-              Titolo del fumetto
+              Comic title
             </label>
             <input
               id="title"
@@ -110,7 +110,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
               htmlFor="sourceWork"
               className="mb-1 block text-sm text-muted"
             >
-              Opera originale (es. Dracula)
+              Source work (e.g. Dracula)
             </label>
             <input
               id="sourceWork"
@@ -122,7 +122,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
           </div>
           <div>
             <label htmlFor="author" className="mb-1 block text-sm text-muted">
-              Autore originale
+              Original author
             </label>
             <input
               id="author"
@@ -133,12 +133,12 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
           </div>
           <div>
             <label htmlFor="style" className="mb-1 block text-sm text-muted">
-              Stile grafico
+              Art style
             </label>
             <input
               id="style"
               name="style"
-              placeholder="es. Noir, Manga, Acquerello gotico"
+              placeholder="e.g. Noir, Manga, Gothic watercolor"
               defaultValue={initial?.style ?? ""}
               className="w-full rounded border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
             />
@@ -148,7 +148,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
 
       <div>
         <label htmlFor="description" className="mb-1 block text-sm text-muted">
-          Descrizione
+          Description
         </label>
         <textarea
           id="description"
@@ -162,7 +162,7 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
       {mode === "edit" && (
         <div>
           <label htmlFor="status" className="mb-1 block text-sm text-muted">
-            Stato
+            Status
           </label>
           <select
             id="status"
@@ -170,8 +170,8 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
             defaultValue={initial?.status}
             className="rounded border border-border bg-surface-2 px-3 py-2 outline-none focus:border-accent"
           >
-            <option value="draft">Bozza (non visibile)</option>
-            <option value="published">Pubblicato</option>
+            <option value="draft">Draft (not visible)</option>
+            <option value="published">Published</option>
           </select>
         </div>
       )}
@@ -182,10 +182,10 @@ export function ComicForm({ mode, comicId, initial }: ComicFormProps) {
         className="rounded bg-accent px-5 py-2.5 font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
       >
         {pending
-          ? "Salvataggio..."
+          ? "Saving..."
           : mode === "create"
-            ? "Crea fumetto"
-            : "Salva modifiche"}
+            ? "Create comic"
+            : "Save changes"}
       </button>
     </form>
   );

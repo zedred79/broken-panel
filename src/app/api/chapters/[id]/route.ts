@@ -16,13 +16,13 @@ export async function PATCH(
 
   const chapter = await prisma.chapter.findUnique({ where: { id } });
   if (!chapter) {
-    return NextResponse.json({ error: "Capitolo non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
   }
 
   if (typeof body?.title === "string") {
     const title = body.title.trim();
     if (!title) {
-      return NextResponse.json({ error: "Titolo del capitolo obbligatorio" }, { status: 400 });
+      return NextResponse.json({ error: "Chapter title is required" }, { status: 400 });
     }
     const updated = await prisma.chapter.update({ where: { id }, data: { title } });
     return NextResponse.json({ chapter: updated });
@@ -30,7 +30,7 @@ export async function PATCH(
 
   const direction = body?.direction;
   if (direction !== "up" && direction !== "down") {
-    return NextResponse.json({ error: "direction non valida" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid direction" }, { status: 400 });
   }
 
   const neighbor = await prisma.chapter.findFirst({
@@ -73,7 +73,7 @@ export async function DELETE(
 
   const chapter = await prisma.chapter.findUnique({ where: { id } });
   if (!chapter) {
-    return NextResponse.json({ error: "Capitolo non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
   }
 
   await prisma.chapter.delete({ where: { id } });

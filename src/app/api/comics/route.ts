@@ -33,16 +33,16 @@ export async function POST(request: Request) {
   const cover = formData.get("cover");
 
   if (typeof title !== "string" || title.trim() === "") {
-    return NextResponse.json({ error: "Il titolo è obbligatorio" }, { status: 400 });
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
   if (typeof sourceWork !== "string" || sourceWork.trim() === "") {
     return NextResponse.json(
-      { error: "L'opera originale è obbligatoria" },
+      { error: "Source work is required" },
       { status: 400 }
     );
   }
 
-  const baseSlug = slugify(title) || "fumetto";
+  const baseSlug = slugify(title) || "comic";
   let slug = baseSlug;
   let i = 1;
   while (await prisma.comic.findUnique({ where: { slug } })) {
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       coverImage = saved.url;
       coverThumbnail = saved.thumbnailUrl;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Errore di upload";
+      const message = err instanceof Error ? err.message : "Upload error";
       return NextResponse.json({ error: message }, { status: 400 });
     }
   }

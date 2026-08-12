@@ -17,18 +17,18 @@ export async function PATCH(
 
   const page = await prisma.page.findUnique({ where: { id } });
   if (!page) {
-    return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
   if ("chapterId" in body) {
     const chapterId = body.chapterId;
     if (chapterId !== null && typeof chapterId !== "string") {
-      return NextResponse.json({ error: "chapterId non valido" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid chapterId" }, { status: 400 });
     }
     if (chapterId) {
       const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
       if (!chapter || chapter.comicId !== page.comicId) {
-        return NextResponse.json({ error: "Capitolo non trovato" }, { status: 404 });
+        return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
       }
     }
     const updated = await prisma.page.update({ where: { id }, data: { chapterId } });
@@ -38,7 +38,7 @@ export async function PATCH(
   const direction = body?.direction;
 
   if (direction !== "up" && direction !== "down") {
-    return NextResponse.json({ error: "direction non valida" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid direction" }, { status: 400 });
   }
 
   const neighbor = await prisma.page.findFirst({
@@ -84,7 +84,7 @@ export async function DELETE(
     select: { imageUrl: true, thumbnailUrl: true },
   });
   if (!page) {
-    return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
   await prisma.page.delete({ where: { id } });

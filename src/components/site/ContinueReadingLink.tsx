@@ -40,7 +40,7 @@ export function ContinueReadingLink({
         href={`/read/${slug}`}
         className="rounded bg-accent px-6 py-3 font-semibold text-accent-foreground transition hover:opacity-90"
       >
-        Leggi ora
+        Read now
       </Link>
     );
   }
@@ -51,13 +51,13 @@ export function ContinueReadingLink({
         href={`/read/${slug}?page=${savedPageIndex + 1}`}
         className="rounded bg-accent px-6 py-3 font-semibold text-accent-foreground transition hover:opacity-90"
       >
-        Continua da pagina {savedPageIndex + 1}
+        Continue from page {savedPageIndex + 1}
       </Link>
       <Link
         href={`/read/${slug}`}
         className="text-sm text-muted hover:text-foreground hover:underline"
       >
-        Ricomincia dall&apos;inizio
+        Start over
       </Link>
     </div>
   );

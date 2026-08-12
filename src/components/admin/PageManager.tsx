@@ -49,7 +49,7 @@ export function PageManager({
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Errore di upload");
+      setError(json.error ?? "Upload error");
     } else {
       router.refresh();
     }
@@ -69,7 +69,7 @@ export function PageManager({
   }
 
   async function remove(pageId: string) {
-    if (!confirm("Eliminare questa pagina e tutti i suoi pannelli?")) return;
+    if (!confirm("Delete this page and all its panels?")) return;
     setBusyId(pageId);
     await fetch(`/api/pages/${pageId}`, { method: "DELETE" });
     router.refresh();
@@ -93,9 +93,9 @@ export function PageManager({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-2xl tracking-wide">Pagine</h2>
+        <h2 className="font-display text-2xl tracking-wide">Pages</h2>
         <label className="cursor-pointer rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:opacity-90">
-          {uploading ? "Caricamento..." : "+ Carica pagina"}
+          {uploading ? "Uploading..." : "+ Upload page"}
           <input
             ref={fileInputRef}
             type="file"
@@ -115,7 +115,7 @@ export function PageManager({
 
       {pages.length === 0 ? (
         <p className="text-muted">
-          Nessuna pagina caricata. Carica la prima tavola A4 del fumetto.
+          No pages uploaded yet. Upload the first page of the comic.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -132,8 +132,8 @@ export function PageManager({
                     className="col-span-full mt-2 first:mt-0 text-sm font-semibold uppercase tracking-wide text-muted"
                   >
                     {page.chapterId
-                      ? chapterTitleById.get(page.chapterId) ?? "Capitolo"
-                      : "Senza capitolo"}
+                      ? chapterTitleById.get(page.chapterId) ?? "Chapter"
+                      : "No chapter"}
                   </h3>
                 )}
                 <div
@@ -144,15 +144,15 @@ export function PageManager({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={page.thumbnailUrl ?? page.imageUrl}
-                      alt={`Pagina ${page.order}`}
+                      alt={`Page ${page.order}`}
                       className="aspect-[3/4] w-full object-cover"
                     />
                   </Link>
                   <div className="p-3">
-                    <p className="text-sm font-medium">Pagina {i + 1}</p>
+                    <p className="text-sm font-medium">Page {i + 1}</p>
                     <p className="text-xs text-muted">
-                      {page._count.panels} vignette
-                      {page._count.panels === 0 && " — da ritagliare"}
+                      {page._count.panels} panels
+                      {page._count.panels === 0 && " — needs cropping"}
                     </p>
                     {chapters.length > 0 && (
                       <select
@@ -163,7 +163,7 @@ export function PageManager({
                         }
                         className="mt-2 w-full rounded border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-accent"
                       >
-                        <option value="">Senza capitolo</option>
+                        <option value="">No chapter</option>
                         {chapters.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.title}
@@ -193,14 +193,14 @@ export function PageManager({
                         onClick={() => remove(page.id)}
                         className="text-accent hover:underline"
                       >
-                        Elimina
+                        Delete
                       </button>
                     </div>
                     <Link
                       href={`/admin/comics/${comicId}/pages/${page.id}`}
                       className="mt-2 block text-center text-xs text-accent hover:underline"
                     >
-                      Ritaglia vignette →
+                      Crop panels →
                     </Link>
                   </div>
                 </div>

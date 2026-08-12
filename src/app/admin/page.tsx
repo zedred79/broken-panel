@@ -13,28 +13,28 @@ export default async function AdminDashboard() {
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-3xl tracking-wide">I tuoi fumetti</h1>
+        <h1 className="font-display text-3xl tracking-wide">Your comics</h1>
         <Link
           href="/admin/comics/new"
           className="rounded bg-accent px-4 py-2 font-semibold text-accent-foreground transition hover:opacity-90"
         >
-          + Nuovo fumetto
+          + New comic
         </Link>
       </div>
 
       {comics.length === 0 ? (
         <p className="text-muted">
-          Nessun fumetto ancora. Creane uno per iniziare.
+          No comics yet. Create one to get started.
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Titolo</th>
-                <th className="px-4 py-3 font-medium">Opera originale</th>
-                <th className="px-4 py-3 font-medium">Stato</th>
-                <th className="px-4 py-3 font-medium">Pagine</th>
+                <th className="px-4 py-3 font-medium">Title</th>
+                <th className="px-4 py-3 font-medium">Source work</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Pages</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
                           : "rounded bg-surface-2 px-2 py-1 text-xs text-muted"
                       }
                     >
-                      {comic.status === "published" ? "Pubblicato" : "Bozza"}
+                      {comic.status === "published" ? "Published" : "Draft"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted">{comic._count.pages}</td>
@@ -61,7 +61,7 @@ export default async function AdminDashboard() {
                         href={`/admin/comics/${comic.id}`}
                         className="text-accent hover:underline"
                       >
-                        Gestisci
+                        Manage
                       </Link>
                       <DeleteComicButton comicId={comic.id} title={comic.title} />
                     </div>

@@ -30,11 +30,11 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-display mb-8 text-2xl tracking-wide">
-          Catalogo
+          Catalog
         </h2>
         {comics.length === 0 ? (
           <p className="text-muted">
-            Nessun fumetto pubblicato ancora. Torna presto.
+            No comics published yet. Check back soon.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">

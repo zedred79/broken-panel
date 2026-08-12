@@ -48,14 +48,14 @@ export default async function ComicDetailPage({
 
         <div>
           <p className="text-sm uppercase tracking-wide text-accent">
-            Tratto da &ldquo;{comic.sourceWork}&rdquo;
-            {comic.author ? ` di ${comic.author}` : ""}
+            Based on &ldquo;{comic.sourceWork}&rdquo;
+            {comic.author ? ` by ${comic.author}` : ""}
           </p>
           <h1 className="font-display mt-2 text-4xl tracking-wide">
             {comic.title}
           </h1>
           {comic.style && (
-            <p className="mt-2 text-sm text-muted">Stile: {comic.style}</p>
+            <p className="mt-2 text-sm text-muted">Style: {comic.style}</p>
           )}
           {comic.description && (
             <p className="mt-6 max-w-2xl text-foreground/90">
@@ -70,10 +70,10 @@ export default async function ComicDetailPage({
                 pageCount={comic.pages.length}
               />
             ) : (
-              <span className="text-muted">In lavorazione — presto disponibile</span>
+              <span className="text-muted">In progress — coming soon</span>
             )}
             <span className="text-sm text-muted">
-              {readablePages.length} pagine
+              {readablePages.length} pages
             </span>
           </div>
         </div>

@@ -199,7 +199,7 @@ export function ComicReader({
           href={`/comics/${slug}`}
           className="rounded border border-white/20 bg-black/40 px-3 py-1.5 text-sm text-white/80 backdrop-blur hover:text-white"
         >
-          ← Chiudi
+          ← Close
         </Link>
         <span className="font-display truncate px-4 text-sm tracking-wide text-white/70">
           {title}
@@ -211,7 +211,7 @@ export function ComicReader({
           onClick={() => setPickerOpen(true)}
           className="rounded border border-white/20 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur transition hover:text-white"
         >
-          Pagina {pageIndex + 1}/{pages.length} ▾
+          Page {pageIndex + 1}/{pages.length} ▾
         </button>
       </div>
 
@@ -239,7 +239,7 @@ export function ComicReader({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentPage.imageUrl}
-              alt={`Pagina ${pageIndex + 1}`}
+              alt={`Page ${pageIndex + 1}`}
               className="block h-full w-full"
               draggable={false}
             />
@@ -276,12 +276,12 @@ export function ComicReader({
         )}
 
         <button
-          aria-label="Vignetta precedente"
+          aria-label="Previous panel"
           onClick={goPrev}
           className="absolute inset-y-0 left-0 z-10 w-2/5 cursor-w-resize"
         />
         <button
-          aria-label="Vignetta successiva"
+          aria-label="Next panel"
           onClick={goNext}
           className="absolute inset-y-0 right-0 z-10 w-3/5 cursor-e-resize"
         />
@@ -289,7 +289,7 @@ export function ComicReader({
         {hintVisible && (
           <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 flex justify-center">
             <span className="rounded-full border border-white/20 bg-black/60 px-4 py-2 text-sm text-white/70 backdrop-blur">
-              Clicca o usa ← → per sfogliare
+              Click or use ← → to browse
             </span>
           </div>
         )}
@@ -320,11 +320,11 @@ export function ComicReader({
         >
           <div className="flex items-center justify-between px-6 py-4">
             <h2 className="font-display text-lg tracking-wide text-white">
-              Vai a una pagina
+              Go to a page
             </h2>
             <button
               onClick={() => setPickerOpen(false)}
-              aria-label="Chiudi"
+              aria-label="Close"
               className="rounded border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:text-white"
             >
               ✕
@@ -343,7 +343,7 @@ export function ComicReader({
                 <Fragment key={page.id}>
                   {showHeader && (
                     <h3 className="col-span-full mt-2 first:mt-0 font-display text-sm tracking-wide text-white/60">
-                      {page.chapterTitle ?? "Senza capitolo"}
+                      {page.chapterTitle ?? "No chapter"}
                     </h3>
                   )}
                   <button
@@ -357,7 +357,7 @@ export function ComicReader({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={page.thumbnailUrl ?? page.imageUrl}
-                      alt={`Pagina ${i + 1}`}
+                      alt={`Page ${i + 1}`}
                       loading="lazy"
                       className="aspect-[3/4] w-full bg-white/5 object-cover"
                     />

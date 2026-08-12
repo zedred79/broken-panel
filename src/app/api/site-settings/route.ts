@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
       data.heroLogo = null;
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Errore di upload";
+    const message = err instanceof Error ? err.message : "Upload error";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 

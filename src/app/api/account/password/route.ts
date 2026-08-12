@@ -16,23 +16,23 @@ export async function POST(request: Request) {
   const newPassword = body?.newPassword;
 
   if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
-    return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
+    return NextResponse.json({ error: "Missing data" }, { status: 400 });
   }
   if (newPassword.length < MIN_PASSWORD_LENGTH) {
     return NextResponse.json(
-      { error: `La nuova password deve avere almeno ${MIN_PASSWORD_LENGTH} caratteri` },
+      { error: `The new password must be at least ${MIN_PASSWORD_LENGTH} characters` },
       { status: 400 }
     );
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) {
-    return NextResponse.json({ error: "Utente non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
   const valid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!valid) {
-    return NextResponse.json({ error: "Password attuale non corretta" }, { status: 400 });
+    return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12);

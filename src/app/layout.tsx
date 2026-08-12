@@ -21,7 +21,7 @@ const bebasNeue = Bebas_Neue({
 export const metadata: Metadata = {
   title: "Broken Panel — Comic Publishing",
   description:
-    "Broken Panel trasforma i grandi classici della letteratura in fumetti generati con l'AI.",
+    "Broken Panel turns great literary classics into AI-generated comics.",
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="it"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">

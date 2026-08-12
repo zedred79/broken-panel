@@ -16,21 +16,21 @@ export async function POST(
 
   const comic = await prisma.comic.findUnique({ where: { id: comicId } });
   if (!comic) {
-    return NextResponse.json({ error: "Fumetto non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Comic not found" }, { status: 404 });
   }
 
   const formData = await request.formData();
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: "Nessun file caricato" }, { status: 400 });
+    return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   }
 
   let saved;
   try {
     saved = await savePageImage(file);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Errore di upload";
+    const message = err instanceof Error ? err.message : "Upload error";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 

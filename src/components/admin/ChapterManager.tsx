@@ -38,7 +38,7 @@ export function ChapterManager({
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Errore imprevisto");
+      setError(json.error ?? "Unexpected error");
     } else {
       setNewTitle("");
       router.refresh();
@@ -75,7 +75,7 @@ export function ChapterManager({
   }
 
   async function remove(chapterId: string) {
-    if (!confirm("Eliminare questo capitolo? Le sue pagine resteranno, senza capitolo.")) return;
+    if (!confirm("Delete this chapter? Its pages will remain, without a chapter.")) return;
     setBusyId(chapterId);
     await fetch(`/api/chapters/${chapterId}`, { method: "DELETE" });
     router.refresh();
@@ -84,7 +84,7 @@ export function ChapterManager({
 
   return (
     <div>
-      <h2 className="font-display mb-4 text-2xl tracking-wide">Capitoli</h2>
+      <h2 className="font-display mb-4 text-2xl tracking-wide">Chapters</h2>
 
       {error && (
         <p className="mb-4 rounded border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent">
@@ -93,7 +93,7 @@ export function ChapterManager({
       )}
 
       {chapters.length === 0 ? (
-        <p className="mb-4 text-muted">Nessun capitolo. Le pagine sono elencate come un unico blocco.</p>
+        <p className="mb-4 text-muted">No chapters. Pages are listed as a single block.</p>
       ) : (
         <ul className="mb-4 space-y-2">
           {chapters.map((chapter, i) => (
@@ -145,7 +145,7 @@ export function ChapterManager({
                   onClick={() => remove(chapter.id)}
                   className="text-accent hover:underline"
                 >
-                  Elimina
+                  Delete
                 </button>
               </div>
             </li>
@@ -157,7 +157,7 @@ export function ChapterManager({
         <input
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Titolo nuovo capitolo"
+          placeholder="New chapter title"
           className="flex-1 rounded border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <button
@@ -165,7 +165,7 @@ export function ChapterManager({
           disabled={creating || !newTitle.trim()}
           className="rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
         >
-          {creating ? "Creazione..." : "+ Nuovo capitolo"}
+          {creating ? "Creating..." : "+ New chapter"}
         </button>
       </form>
     </div>

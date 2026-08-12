@@ -17,7 +17,7 @@ export function ChangePasswordForm() {
     setSaved(false);
 
     if (newPassword !== confirmPassword) {
-      setError("La nuova password e la conferma non coincidono");
+      setError("The new password and confirmation do not match");
       return;
     }
 
@@ -30,7 +30,7 @@ export function ChangePasswordForm() {
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Errore imprevisto");
+      setError(json.error ?? "Unexpected error");
       setPending(false);
       return;
     }
@@ -44,9 +44,9 @@ export function ChangePasswordForm() {
 
   return (
     <div className="rounded-lg border border-border bg-surface p-6">
-      <h3 className="font-display text-lg tracking-wide">Cambia password</h3>
+      <h3 className="font-display text-lg tracking-wide">Change password</h3>
       <p className="mb-4 text-sm text-muted">
-        Dopo il salvataggio dovrai accedere di nuovo con la nuova password.
+        After saving you&apos;ll need to sign in again with the new password.
       </p>
 
       <form onSubmit={handleSubmit} className="max-w-sm space-y-4">
@@ -58,7 +58,7 @@ export function ChangePasswordForm() {
 
         <div>
           <label htmlFor="currentPassword" className="mb-1 block text-sm text-muted">
-            Password attuale
+            Current password
           </label>
           <input
             id="currentPassword"
@@ -73,7 +73,7 @@ export function ChangePasswordForm() {
 
         <div>
           <label htmlFor="newPassword" className="mb-1 block text-sm text-muted">
-            Nuova password
+            New password
           </label>
           <input
             id="newPassword"
@@ -89,7 +89,7 @@ export function ChangePasswordForm() {
 
         <div>
           <label htmlFor="confirmPassword" className="mb-1 block text-sm text-muted">
-            Conferma nuova password
+            Confirm new password
           </label>
           <input
             id="confirmPassword"
@@ -108,11 +108,11 @@ export function ChangePasswordForm() {
           disabled={pending}
           className="rounded bg-accent px-5 py-2.5 font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Salvataggio..." : "Cambia password"}
+          {pending ? "Saving..." : "Change password"}
         </button>
         {saved && (
           <p className="text-sm text-green-400">
-            Password cambiata ✓ — reindirizzamento al login...
+            Password changed ✓ — redirecting to login...
           </p>
         )}
       </form>

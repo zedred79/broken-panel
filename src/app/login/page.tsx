@@ -15,7 +15,7 @@ export default function LoginPage() {
         <div className="mb-8 flex flex-col items-center">
           <img src="/logo-mark.svg" alt="" className="h-16 w-auto" />
           <h1 className="font-display mt-4 text-2xl tracking-wide">
-            AREA ADMIN
+            ADMIN AREA
           </h1>
         </div>
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
             disabled={pending}
             className="w-full rounded bg-accent py-2.5 font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Accesso in corso..." : "Accedi"}
+            {pending ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>

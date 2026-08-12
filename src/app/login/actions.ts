@@ -19,9 +19,9 @@ export async function loginAction(
   } catch (error) {
     if (error instanceof AuthError) {
       if (error.message.startsWith("rate-limited")) {
-        return "Troppi tentativi falliti. Riprova tra qualche minuto.";
+        return "Too many failed attempts. Try again in a few minutes.";
       }
-      return "Email o password non validi.";
+      return "Invalid email or password.";
     }
     throw error;
   }

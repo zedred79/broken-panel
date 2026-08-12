@@ -56,7 +56,7 @@ function LogoField({
               onClick={onReset}
               className="text-xs text-accent hover:underline"
             >
-              Ripristina logo predefinito ({defaultSrc})
+              Restore default logo ({defaultSrc})
             </button>
           )}
         </div>
@@ -132,7 +132,7 @@ export function SiteSettingsForm({ initial }: Props) {
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Errore imprevisto");
+      setError(json.error ?? "Unexpected error");
       setPending(false);
       return;
     }
@@ -153,8 +153,8 @@ export function SiteSettingsForm({ initial }: Props) {
       )}
 
       <LogoField
-        label="Logo header"
-        hint="Mostrato nella barra di navigazione del sito pubblico."
+        label="Header logo"
+        hint="Shown in the public site's navigation bar."
         current={headerPreview}
         defaultSrc={initial.defaultHeaderLogo}
         inputRef={headerInputRef}
@@ -164,8 +164,8 @@ export function SiteSettingsForm({ initial }: Props) {
       />
 
       <LogoField
-        label="Logo presentazione (hero)"
-        hint="Mostrato in grande nella sezione di apertura della homepage."
+        label="Hero logo"
+        hint="Shown large in the homepage's opening section."
         current={heroPreview}
         defaultSrc={initial.defaultHeroLogo}
         inputRef={heroInputRef}
@@ -179,9 +179,9 @@ export function SiteSettingsForm({ initial }: Props) {
         disabled={pending}
         className="rounded bg-accent px-5 py-2.5 font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Salvataggio..." : "Salva impostazioni"}
+        {pending ? "Saving..." : "Save settings"}
       </button>
-      {saved && <p className="text-sm text-green-400">Salvato ✓</p>}
+      {saved && <p className="text-sm text-green-400">Saved ✓</p>}
     </form>
   );
 }

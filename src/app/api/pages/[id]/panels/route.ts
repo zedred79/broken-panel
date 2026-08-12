@@ -20,7 +20,7 @@ export async function GET(
   });
 
   if (!page) {
-    return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -49,7 +49,7 @@ export async function PUT(
   const panels = body?.panels;
 
   if (!Array.isArray(panels)) {
-    return NextResponse.json({ error: "panels non valido" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid panels" }, { status: 400 });
   }
 
   for (const panel of panels) {
@@ -67,7 +67,7 @@ export async function PUT(
       )
     ) {
       return NextResponse.json(
-        { error: "Ogni pannello richiede almeno 3 punti validi (0-100)" },
+        { error: "Each panel requires at least 3 valid points (0-100)" },
         { status: 400 }
       );
     }
@@ -75,7 +75,7 @@ export async function PUT(
 
   const page = await prisma.page.findUnique({ where: { id } });
   if (!page) {
-    return NextResponse.json({ error: "Pagina non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
   await prisma.$transaction([

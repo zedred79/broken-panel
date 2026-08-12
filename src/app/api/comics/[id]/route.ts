@@ -24,7 +24,7 @@ export async function GET(
   });
 
   if (!comic) {
-    return NextResponse.json({ error: "Non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   return NextResponse.json({ comic });
@@ -66,7 +66,7 @@ export async function PATCH(
       data.coverImage = saved.url;
       data.coverThumbnail = saved.thumbnailUrl;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Errore di upload";
+      const message = err instanceof Error ? err.message : "Upload error";
       return NextResponse.json({ error: message }, { status: 400 });
     }
   }
@@ -108,7 +108,7 @@ export async function DELETE(
     include: { pages: { select: { imageUrl: true, thumbnailUrl: true } } },
   });
   if (!comic) {
-    return NextResponse.json({ error: "Non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   await prisma.comic.delete({ where: { id } });

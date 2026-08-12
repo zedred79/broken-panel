@@ -13,10 +13,10 @@ export default async function SiteSettingsPage() {
   return (
     <div>
       <h1 className="font-display mb-2 text-3xl tracking-wide">
-        Impostazioni sito
+        Site settings
       </h1>
       <p className="mb-8 text-sm text-muted">
-        Personalizza i loghi mostrati sul sito pubblico.
+        Customize the logos shown on the public site.
       </p>
 
       <SiteSettingsForm

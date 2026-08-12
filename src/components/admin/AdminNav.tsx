@@ -13,10 +13,10 @@ export function AdminNav() {
         </Link>
         <nav className="flex items-center gap-4 text-sm text-muted">
           <Link href="/admin/settings" className="transition hover:text-foreground">
-            Impostazioni
+            Settings
           </Link>
           <Link href="/" className="transition hover:text-foreground">
-            Vedi sito
+            View site
           </Link>
           <form
             action={async () => {
@@ -28,7 +28,7 @@ export function AdminNav() {
               type="submit"
               className="rounded border border-border px-3 py-1.5 transition hover:border-accent hover:text-foreground"
             >
-              Esci
+              Log out
             </button>
           </form>
         </nav>

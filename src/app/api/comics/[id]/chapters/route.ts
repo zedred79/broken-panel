@@ -15,13 +15,13 @@ export async function POST(
 
   const comic = await prisma.comic.findUnique({ where: { id: comicId } });
   if (!comic) {
-    return NextResponse.json({ error: "Fumetto non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Comic not found" }, { status: 404 });
   }
 
   const body = await request.json();
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   if (!title) {
-    return NextResponse.json({ error: "Titolo del capitolo obbligatorio" }, { status: 400 });
+    return NextResponse.json({ error: "Chapter title is required" }, { status: 400 });
   }
 
   const last = await prisma.chapter.findFirst({

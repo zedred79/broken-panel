@@ -18,13 +18,13 @@ export async function GET(
   const { filename } = await params;
 
   if (!UPLOAD_FILENAME_PATTERN.test(filename)) {
-    return NextResponse.json({ error: "Nome file non valido" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
   const ext = path.extname(filename).toLowerCase();
   const contentType = CONTENT_TYPES[ext];
   if (!contentType) {
-    return NextResponse.json({ error: "Tipo file non supportato" }, { status: 400 });
+    return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
   try {
@@ -36,6 +36,6 @@ export async function GET(
       },
     });
   } catch {
-    return NextResponse.json({ error: "File non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 }

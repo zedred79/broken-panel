@@ -25,7 +25,7 @@ const MAX_LOGO_IMAGE_BYTES = 2 * 1024 * 1024;
 
 function assertFileSize(file: File, maxBytes: number, label: string): void {
   if (file.size > maxBytes) {
-    throw new Error(`${label} troppo grande (max ${maxBytes / (1024 * 1024)}MB)`);
+    throw new Error(`${label} is too large (max ${maxBytes / (1024 * 1024)}MB)`);
   }
 }
 
@@ -47,14 +47,14 @@ function validateRasterImage(
   try {
     result = imageSize(buffer);
   } catch {
-    throw new Error("Il file non è un'immagine valida o è corrotto");
+    throw new Error("The file is not a valid image or is corrupted");
   }
 
   if (!result.width || !result.height) {
-    throw new Error("Impossibile leggere le dimensioni dell'immagine");
+    throw new Error("Unable to read the image dimensions");
   }
   if (result.type !== RASTER_MIME_TO_DETECTED_TYPE[declaredType]) {
-    throw new Error("Il contenuto del file non corrisponde al formato dichiarato");
+    throw new Error("The file content doesn't match the declared format");
   }
 
   return { width: result.width, height: result.height };
@@ -119,9 +119,9 @@ export async function savePageImage(file: File): Promise<{
   height: number;
 }> {
   if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Formato immagine non supportato (usa PNG, JPEG o WebP)");
+    throw new Error("Unsupported image format (use PNG, JPEG or WebP)");
   }
-  assertFileSize(file, MAX_PAGE_IMAGE_BYTES, "Immagine della tavola");
+  assertFileSize(file, MAX_PAGE_IMAGE_BYTES, "Page image");
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const { width, height } = validateRasterImage(buffer, file.type);
@@ -141,9 +141,9 @@ export async function saveCoverImage(
   file: File
 ): Promise<{ url: string; thumbnailUrl: string }> {
   if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Formato immagine non supportato (usa PNG, JPEG o WebP)");
+    throw new Error("Unsupported image format (use PNG, JPEG or WebP)");
   }
-  assertFileSize(file, MAX_COVER_IMAGE_BYTES, "Copertina");
+  assertFileSize(file, MAX_COVER_IMAGE_BYTES, "Cover image");
 
   const buffer = Buffer.from(await file.arrayBuffer());
   validateRasterImage(buffer, file.type);
@@ -173,7 +173,7 @@ function sanitizeSvg(buffer: Buffer): Buffer {
   });
 
   if (!clean.includes("<svg")) {
-    throw new Error("File SVG non valido");
+    throw new Error("Invalid SVG file");
   }
 
   return Buffer.from(clean, "utf-8");
@@ -181,7 +181,7 @@ function sanitizeSvg(buffer: Buffer): Buffer {
 
 export async function saveLogoImage(file: File): Promise<string> {
   if (!LOGO_ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Formato immagine non supportato (usa PNG, WebP, SVG o JPEG)");
+    throw new Error("Unsupported image format (use PNG, WebP, SVG or JPEG)");
   }
   assertFileSize(file, MAX_LOGO_IMAGE_BYTES, "Logo");
 

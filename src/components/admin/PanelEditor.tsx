@@ -161,7 +161,7 @@ export function PanelEditor({
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "Errore nel salvataggio");
+      setError(json.error ?? "Save error");
     } else {
       setSaved(true);
       router.refresh();
@@ -178,26 +178,26 @@ export function PanelEditor({
               onClick={startDrawing}
               className="rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
             >
-              + Nuova vignetta
+              + New panel
             </button>
           ) : (
             <>
               <span className="text-sm text-muted">
-                Clicca per aggiungere punti ({drawing.length}). Doppio click o
-                clicca sul primo punto per chiudere.
+                Click to add points ({drawing.length}). Double-click or
+                click the first point to close.
               </span>
               <button
                 onClick={finishDrawing}
                 disabled={drawing.length < 3}
                 className="rounded bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-40"
               >
-                Chiudi vignetta
+                Close panel
               </button>
               <button
                 onClick={cancelDrawing}
                 className="rounded border border-border px-3 py-1.5 text-sm hover:border-accent"
               >
-                Annulla (Esc)
+                Cancel (Esc)
               </button>
             </>
           )}
@@ -213,7 +213,7 @@ export function PanelEditor({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
-            alt="Pagina"
+            alt="Page"
             className="pointer-events-none block w-full"
             draggable={false}
           />
@@ -305,10 +305,10 @@ export function PanelEditor({
 
       <div>
         <h3 className="font-display mb-3 text-xl tracking-wide">
-          Vignette ({panels.length})
+          Panels ({panels.length})
         </h3>
         <p className="mb-4 text-xs text-muted">
-          L&apos;ordine qui sotto è l&apos;ordine di lettura durante lo zoom.
+          The order below is the reading order during zoom.
         </p>
 
         <ol className="mb-6 space-y-2">
@@ -322,7 +322,7 @@ export function PanelEditor({
                   : "border-border bg-surface"
               }`}
             >
-              <span>Vignetta {i + 1}</span>
+              <span>Panel {i + 1}</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={(e) => {
@@ -369,11 +369,11 @@ export function PanelEditor({
           disabled={saving}
           className="w-full rounded bg-accent py-2.5 font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
         >
-          {saving ? "Salvataggio..." : "Salva vignette"}
+          {saving ? "Saving..." : "Save panels"}
         </button>
         {saved && (
           <p className="mt-2 text-center text-sm text-green-400">
-            Salvato ✓
+            Saved ✓
           </p>
         )}
 
@@ -381,7 +381,7 @@ export function PanelEditor({
           href={`/admin/comics/${comicId}`}
           className="mt-4 block text-center text-sm text-muted hover:text-foreground"
         >
-          ← Torna al fumetto
+          ← Back to comic
         </a>
       </div>
     </div>

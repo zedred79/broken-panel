@@ -20,7 +20,7 @@ export function DeleteComicButton({
   async function handleDelete() {
     if (
       !confirm(
-        `Eliminare definitivamente "${title}"? Verranno cancellate anche tutte le pagine e le vignette. L'operazione non è reversibile.`
+        `Permanently delete "${title}"? All its pages and panels will be deleted too. This action cannot be undone.`
       )
     ) {
       return;
@@ -30,7 +30,7 @@ export function DeleteComicButton({
     const res = await fetch(`/api/comics/${comicId}`, { method: "DELETE" });
 
     if (!res.ok) {
-      alert("Impossibile eliminare il fumetto.");
+      alert("Unable to delete the comic.");
       setBusy(false);
       return;
     }
@@ -48,7 +48,7 @@ export function DeleteComicButton({
       disabled={busy}
       className={className ?? "text-accent hover:underline disabled:opacity-50"}
     >
-      {busy ? "Eliminazione..." : "Elimina"}
+      {busy ? "Deleting..." : "Delete"}
     </button>
   );
 }

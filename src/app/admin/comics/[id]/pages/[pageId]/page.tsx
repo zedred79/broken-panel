@@ -23,11 +23,10 @@ export default async function PagePanelEditorPage({
   return (
     <div>
       <h1 className="font-display mb-2 text-3xl tracking-wide">
-        Ritaglia vignette
+        Crop panels
       </h1>
       <p className="mb-8 text-sm text-muted">
-        Disegna un poligono attorno a ogni vignetta, nell&apos;ordine in cui
-        va letta.
+        Draw a polygon around each panel, in the order it should be read.
       </p>
       <PanelEditor
         pageId={page.id}
