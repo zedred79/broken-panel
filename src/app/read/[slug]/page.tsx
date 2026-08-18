@@ -1,6 +1,30 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ComicReader } from "@/components/reader/ComicReader";
+
+// Il reader è un'app client: per un crawler è una pagina praticamente vuota,
+// e indicizzarla vorrebbe dire farla competere con la scheda del fumetto
+// (quella sì con testo, copertina e descrizione). Da qui il noindex, che
+// raddoppia il disallow già presente in robots.ts — il disallow impedisce la
+// scansione, il noindex l'indicizzazione anche se ci si arriva da un link
+// esterno. `follow` resta attivo per non disperdere i link verso la scheda.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const comic = await prisma.comic.findUnique({
+    where: { slug },
+    select: { title: true, status: true },
+  });
+
+  return {
+    title: comic && comic.status === "published" ? `Reading ${comic.title}` : "Reader",
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function ReadComicPage({
   params,

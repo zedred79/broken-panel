@@ -40,6 +40,19 @@ export async function PATCH(
   }
 
   const { id } = await params;
+
+  // Letto *prima* dell'update: serve sia a rispondere 404 su un id
+  // inesistente (prisma.update lancerebbe P2025 -> 500, unica route del
+  // progetto a non seguire il pattern delle altre) sia a sapere quale
+  // copertina rimpiazzare dopo.
+  const previous = await prisma.comic.findUnique({
+    where: { id },
+    select: { coverImage: true, coverThumbnail: true },
+  });
+  if (!previous) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const formData = await request.formData();
 
   const title = formData.get("title");
@@ -71,14 +84,23 @@ export async function PATCH(
     }
   }
 
-  const previous = await prisma.comic.findUnique({
-    where: { id },
-    select: { coverImage: true, coverThumbnail: true },
-  });
+  let comic;
+  try {
+    comic = await prisma.comic.update({ where: { id }, data });
+  } catch (err) {
+    // La nuova copertina è già stata scritta su disco a questo punto: se
+    // l'update fallisce resterebbe lì per sempre, senza nessuna riga di DB
+    // che la referenzi.
+    if (typeof data.coverImage === "string") {
+      await Promise.all([
+        deleteUploadedFile(data.coverImage),
+        deleteUploadedFile(data.coverThumbnail as string),
+      ]);
+    }
+    throw err;
+  }
 
-  const comic = await prisma.comic.update({ where: { id }, data });
-
-  if (typeof data.coverImage === "string" && previous) {
+  if (typeof data.coverImage === "string") {
     await Promise.all([
       previous.coverImage !== data.coverImage
         ? deleteUploadedFile(previous.coverImage)

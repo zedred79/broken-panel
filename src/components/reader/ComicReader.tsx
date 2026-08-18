@@ -67,6 +67,15 @@ export function ComicReader({
   }, []);
 
   useEffect(() => {
+    // Alla prima pagina non c'è nessun progresso da ricordare: salvarlo
+    // (cosa che succedeva anche solo al mount, con pageIndex = 0) faceva
+    // comparire "Continue from page 1" sulla scheda del fumetto appena lo si
+    // apriva. Tornare indietro fino alla prima pagina cancella invece un
+    // progresso più avanti salvato prima, altrimenti resterebbe stantio.
+    if (pageIndex === 0) {
+      clearReadingProgress(slug);
+      return;
+    }
     saveReadingProgress(slug, pageIndex);
   }, [slug, pageIndex]);
 

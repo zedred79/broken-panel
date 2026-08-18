@@ -17,6 +17,8 @@ services:
       UPLOADS_DIR: "/app/uploads"
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
       NEXTAUTH_URL: "${NEXTAUTH_URL}"
+      # Opzionale: se vuota, src/lib/site-config.ts ricade su NEXTAUTH_URL.
+      SITE_URL: "${SITE_URL:-}"
       ADMIN_EMAIL: "${ADMIN_EMAIL}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       SITE_HERO_TITLE: "${SITE_HERO_TITLE}"

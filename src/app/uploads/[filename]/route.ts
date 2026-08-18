@@ -28,11 +28,29 @@ export async function GET(
   }
 
   try {
-    const buffer = await readFile(path.join(UPLOADS_ROOT, filename));
+    const buffer = await readFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename));
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
+        // Difesa in profondità sull'unico endpoint che restituisce contenuto
+        // caricato dall'utente. Gli SVG sono già sanificati all'upload
+        // (sanitizeSvg in src/lib/uploads.ts), ma se un giorno quella
+        // sanificazione dovesse lasciar passare qualcosa, questi due header
+        // impediscono comunque l'esecuzione: "nosniff" blocca il MIME
+        // sniffing del browser, la CSP azzera script e risorse esterne se il
+        // file viene aperto direttamente come documento (non via <img>, che
+        // sandboxa già di suo).
+        //
+        // Deliberatamente SENZA la direttiva `sandbox`: per spec si applica
+        // solo alle risposte la cui destinazione è un documento, ma è l'unica
+        // direttiva qui che, se un browser la interpretasse più
+        // aggressivamente, potrebbe impedire il rendering delle immagini in
+        // <img> — cioè rompere tutto il sito. `default-src 'none'` copre già
+        // il caso che ci interessa (niente script né risorse esterne se il
+        // file viene aperto come pagina) senza quel rischio.
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
       },
     });
   } catch {

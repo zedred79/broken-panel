@@ -78,7 +78,7 @@ async function saveThumbnail(
     .webp({ quality: 80 })
     .toBuffer();
 
-  await writeFile(path.join(UPLOADS_ROOT, thumbFilename), thumbBuffer);
+  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, thumbFilename), thumbBuffer);
   return `/uploads/${thumbFilename}`;
 }
 
@@ -87,6 +87,14 @@ async function saveThumbnail(
 // restarts. Uploaded content is served instead via src/app/uploads/[filename].
 export const UPLOADS_ROOT =
   process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads");
+
+// Ogni path.join(UPLOADS_ROOT, ...) qui sotto porta un commento
+// `/*turbopackIgnore: true*/`. Motivo: UPLOADS_ROOT dipende da una variabile
+// d'ambiente, quindi Turbopack non riesce ad analizzarlo staticamente e in
+// build finiva per tracciare e includere *l'intero progetto* (sorgenti e
+// public/ compresi) nell'output server, con un warning esplicito. Il commento
+// dice a Turbopack di non provare a risolvere quel path: i file li leggiamo
+// e scriviamo noi a runtime, non c'è niente da bundlare.
 
 // Stesso pattern usato da src/app/uploads/[filename]/route.ts per servire i
 // file: unica fonte di verità su cosa sia un nome file valido, per evitare
@@ -106,7 +114,7 @@ export async function deleteUploadedFile(
   if (!UPLOAD_FILENAME_PATTERN.test(filename)) return;
 
   try {
-    await unlink(path.join(UPLOADS_ROOT, filename));
+    await unlink(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
   }
@@ -131,7 +139,7 @@ export async function savePageImage(file: File): Promise<{
   const filename = `${id}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(UPLOADS_ROOT, filename), buffer);
+  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
   const thumbnailUrl = await saveThumbnail(buffer, id);
 
   return { url: `/uploads/${filename}`, thumbnailUrl, width, height };
@@ -152,7 +160,7 @@ export async function saveCoverImage(
   const filename = `${id}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(UPLOADS_ROOT, filename), buffer);
+  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
   const thumbnailUrl = await saveThumbnail(buffer, id);
 
   return { url: `/uploads/${filename}`, thumbnailUrl };
@@ -202,7 +210,7 @@ export async function saveLogoImage(file: File): Promise<string> {
   const filename = `logo-${randomUUID()}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(UPLOADS_ROOT, filename), buffer);
+  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
 
   return `/uploads/${filename}`;
 }

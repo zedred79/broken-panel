@@ -92,6 +92,9 @@ src/lib/
 src/proxy.ts                  Ex "middleware.ts" (rinominato in Next 16, vedi sotto).
                                Protegge /admin/* redirigendo a /login se non autenticati.
 
+src/app/sitemap.ts             Sitemap XML generato dai fumetti pubblicati (dinamico)
+src/app/robots.ts              robots.txt (dinamico, vedi sotto il perché)
+
 src/app/(site)/                Sito pubblico: home, /comics/[slug]
 src/app/admin/                 Area admin (dashboard, editor fumetto, editor vignette)
 src/app/api/                   Route handler REST per comics/pages/panels/chapters
@@ -184,6 +187,12 @@ dalla risoluzione con cui viene mostrata l'immagine.
    altrimenti il solito "Leggi ora" — legge il `localStorage` con `useSyncExternalStore`
    (non `useEffect`+`useState`, che darebbe un warning React e un mismatch di idratazione
    più difficile da gestire bene). Granularità a livello di pagina, non di vignetta.
+   **Alla prima pagina il progresso viene cancellato, non salvato**: prima
+   veniva scritto anche al mount con `pageIndex = 0`, così bastava aprire un
+   fumetto e uscire perché la scheda mostrasse "Continue from page 1" invece
+   di "Read now". Cancellare (invece di limitarsi a non salvare) serve al caso
+   in cui si torni indietro fino all'inizio dopo aver già letto avanti:
+   altrimenti resterebbe salvato un progresso stantio.
 
 **Insidia trovata e corretta**: la dimensione del contenitore veniva letta solo via
 `ResizeObserver`, che in alcuni contesti (pannelli non compositati/non visibili) non
@@ -221,6 +230,29 @@ li legge.
 **Se in futuro serve salvare altri tipi di file caricati dall'utente, riusa questo
 pattern — non tornare a scrivere dentro `public/`.**
 
+Due dettagli non ovvi su questa route:
+
+- Risponde con `X-Content-Type-Options: nosniff` e una CSP restrittiva
+  (`default-src 'none'; style-src 'unsafe-inline'`) oltre al `Cache-Control`
+  immutabile. La direttiva `sandbox` è volutamente esclusa: per spec vale solo
+  per le risposte richieste come documento, ma è l'unica che — se un browser
+  la interpretasse più aggressivamente — potrebbe impedire il rendering delle
+  immagini dentro `<img>`, cioè rompere tutto il sito, e `default-src 'none'`
+  copre già il caso che interessa. È l'unico endpoint del sito che restituisce
+  contenuto caricato dall'utente, e tra i formati ammessi per i loghi c'è
+  l'SVG: sono già sanificati all'upload (vedi sotto), ma se quella
+  sanificazione dovesse un giorno lasciar passare qualcosa, questi header
+  impediscono comunque l'esecuzione quando il file viene aperto direttamente.
+- Ogni `path.join(UPLOADS_ROOT, ...)` (qui e in `src/lib/uploads.ts`) porta un
+  commento `/*turbopackIgnore: true*/`. `UPLOADS_ROOT` dipende da una
+  variabile d'ambiente, quindi Turbopack non riesce ad analizzarlo
+  staticamente e in build tracciava e includeva **l'intero progetto**
+  (sorgenti e `public/` compresi) nell'output server, con tanto di warning.
+  Il commento gli dice di non provare a risolvere quel path: quei file li
+  leggiamo e scriviamo a runtime, non c'è niente da bundlare. **Se aggiungi
+  altri accessi al filesystem su `UPLOADS_ROOT`, mettici lo stesso commento**,
+  altrimenti il warning (e il tracing di tutto il progetto) ritorna.
+
 ## Hardening di sicurezza (upload e login)
 
 Tutto qui sotto è stato aggiunto dopo un audit di sicurezza del codice iniziale, che
@@ -250,6 +282,9 @@ rate-limit sui tentativi di login.
   — prima non veniva ripulito nulla e i file restavano su disco per sempre. Ignora
   silenziosamente URL esterni a `/uploads/` (i loghi di default bundlati in `public/`) e
   file già assenti.
+- **Header di sicurezza sulla route che serve gli upload**
+  (`nosniff` + CSP restrittiva, vedi la sezione precedente): difesa in
+  profondità in caso la sanificazione SVG lasci passare qualcosa.
 - **Rate-limit sul login** (`src/lib/login-rate-limit.ts`, usato in `src/lib/auth.ts`):
   5 tentativi falliti / 15 minuti per email, poi anche la password corretta viene
   rifiutata finché la finestra non scade. In-memory (si resetta a un riavvio del
@@ -316,10 +351,59 @@ leggono i loghi correnti con `getSiteSettings()` (query Prisma diretta, non env 
 a differenza dei testi di `site-config.ts`, qui serve un DB perché sono file binari,
 non semplici stringhe da mettere in `.env`).
 
+## SEO e anteprime social (metadata)
+
+Prima esisteva solo il `metadata` statico del layout radice, quindi *ogni*
+pagina — homepage, ogni scheda fumetto, ogni pagina del reader — dichiarava lo
+stesso titolo e la stessa descrizione. Conseguenze pratiche: nei risultati di
+ricerca i fumetti erano indistinguibili tra loro, e incollare il link di un
+fumetto in una chat non mostrava né titolo né copertina (mancavano i tag
+OpenGraph), pur avendo la copertina già nel DB.
+
+Come è organizzato ora:
+
+- `src/app/layout.tsx` definisce `metadataBase` (serve a Next per rendere
+  assoluti gli URL relativi: le copertine sono path tipo `/uploads/xxx.png`, e
+  le anteprime social richiedono URL assoluti) e un `title.template`
+  (`"%s — Broken Panel"`), così le pagine figlie impostano solo il proprio
+  titolo.
+- `generateMetadata()` in `src/app/(site)/comics/[slug]/page.tsx` produce
+  titolo, descrizione (quella del fumetto, con un fallback costruito da
+  `sourceWork`/`author`/`style` se manca), canonical, OpenGraph e Twitter Card
+  con la copertina **a piena risoluzione** (non il thumbnail da 480px: le
+  piattaforme riscalano da sole e una sorgente piccola verrebbe sgranata).
+  Ripete la stessa condizione `status !== "published"` del componente: senza,
+  una bozza esporrebbe titolo e trama nei metadata di una pagina che poi
+  risponde 404.
+- `generateMetadata()` in `src/app/read/[slug]/page.tsx` dà un titolo proprio
+  al reader e soprattutto `robots: { index: false, follow: true }` — il reader
+  è un'app client, per un crawler è una pagina vuota, e indicizzarla
+  significherebbe farla competere con la scheda del fumetto.
+- `src/app/sitemap.ts` elenca homepage + fumetti pubblicati con `lastModified`.
+- `src/app/robots.ts` blocca `/admin/`, `/api/`, `/login`, `/read/` e dichiara
+  il sitemap.
+
+**Insidia (la stessa già nota, ma con due cause diverse)**: entrambe le route
+esportano `export const dynamic = "force-dynamic"`. Per il **sitemap** il
+motivo è quello classico — legge dal DB con una query Prisma diretta, quindi
+senza quell'export verrebbe congelato al build e un fumetto pubblicato dopo non
+comparirebbe mai. Per **robots.ts** invece la causa è un'altra: non legge dal
+DB ma legge `SITE_URL` da una variabile d'ambiente, e l'immagine Docker viene
+buildata *senza* le env di produzione — da statica, il sitemap dichiarato lì
+punterebbe a `localhost`. Verifica con `npm run build`: `/sitemap.xml` e
+`/robots.txt` devono comparire come `ƒ`, non `○`.
+
+Le piattaforme social cachano le anteprime in modo aggressivo: conviene
+controllare che i tag siano corretti *prima* di condividere in giro i link, non
+dopo.
+
 ## Variabili d'ambiente (vedi .env.example)
 
 `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
-`HOST_PORT`, `SWAG_NETWORK_NAME`, e i testi homepage/footer configurabili
+`HOST_PORT`, `SWAG_NETWORK_NAME`, `SITE_URL` (opzionale: URL pubblico usato per
+i metadata SEO/social — se non impostata si usa `NEXTAUTH_URL`, che è già
+"l'URL pubblico del sito", per non avere due variabili da tenere allineate),
+e i testi homepage/footer configurabili
 `SITE_HERO_TITLE`, `SITE_HERO_SUBTITLE`, `SITE_FOOTER_TEXT` (letti da
 `src/lib/site-config.ts`, con fallback ai testi originali se non impostati). I **loghi**
 invece non sono in env: si gestiscono da `/admin/settings` (vedi sopra).
@@ -354,7 +438,8 @@ env, loghi header/hero personalizzabili da `/admin/settings`, upload con limiti 
 dimensione e validazione del contenuto reale, sanificazione degli SVG caricati come loghi,
 cleanup dei file orfani su delete/replace, thumbnail generati per tavole/copertine,
 capitoli come etichetta di raggruppamento sopra l'ordine di lettura piatto (gestione da
-`ChapterManager` in admin, raggruppamento nel picker pagine del reader — vedi sopra).
+`ChapterManager` in admin, raggruppamento nel picker pagine del reader — vedi sopra),
+metadata SEO/OpenGraph per fumetto + sitemap e robots.txt dinamici (vedi sopra).
 
 Non ancora fatto / possibili prossimi passi: riordino drag&drop delle pagine
 per-capitolo (oggi l'ordine resta globale sul fumetto, senza enforcement di contiguità

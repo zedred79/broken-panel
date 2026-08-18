@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +20,15 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Broken Panel — Comic Publishing",
+  // Base con cui Next rende assoluti gli URL relativi nei metadata (le
+  // copertine passate a openGraph.images sono path tipo "/uploads/xxx.png").
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Broken Panel — Comic Publishing",
+    // Le pagine figlie impostano solo il proprio titolo (es. "Dracula") e
+    // Next ci costruisce intorno questo template.
+    template: "%s — Broken Panel",
+  },
   description:
     "Broken Panel turns great literary classics into AI-generated comics.",
 };

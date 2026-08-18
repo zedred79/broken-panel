@@ -1,6 +1,69 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ContinueReadingLink } from "@/components/site/ContinueReadingLink";
+
+// È la pagina che si condivide di un fumetto, quindi è qui che servono
+// davvero titolo, descrizione e immagine propri: senza, ogni fumetto
+// erediterebbe il titolo generico del layout radice e incollare il link in
+// una chat non mostrerebbe né copertina né titolo. Next chiama questa
+// funzione in parallelo al render della pagina, quindi la seconda query non
+// aggiunge latenza percepibile (e SQLite è in-process).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const comic = await prisma.comic.findUnique({
+    where: { slug },
+    select: {
+      title: true,
+      description: true,
+      sourceWork: true,
+      author: true,
+      style: true,
+      status: true,
+      coverImage: true,
+    },
+  });
+
+  // Stessa condizione del componente qui sotto: una bozza non deve esporre
+  // titolo e trama nei metadata di una pagina che poi risponde 404.
+  if (!comic || comic.status !== "published") {
+    return { title: "Comic not found" };
+  }
+
+  const byline = comic.author ? ` by ${comic.author}` : "";
+  const description =
+    comic.description ||
+    `${comic.title} — an AI-generated comic based on "${comic.sourceWork}"${byline}` +
+      (comic.style ? `, in a ${comic.style} style.` : ".");
+
+  return {
+    title: comic.title,
+    description,
+    alternates: { canonical: `/comics/${slug}` },
+    openGraph: {
+      type: "article",
+      title: comic.title,
+      description,
+      url: `/comics/${slug}`,
+      // La copertina a piena risoluzione, non il thumbnail da 480px: le
+      // piattaforme la riscalano da sole e una sorgente piccola verrebbe
+      // mostrata sgranata.
+      images: comic.coverImage
+        ? [{ url: comic.coverImage, alt: comic.title }]
+        : undefined,
+    },
+    twitter: {
+      card: comic.coverImage ? "summary_large_image" : "summary",
+      title: comic.title,
+      description,
+      images: comic.coverImage ? [comic.coverImage] : undefined,
+    },
+  };
+}
 
 export default async function ComicDetailPage({
   params,
@@ -23,7 +86,11 @@ export default async function ComicDetailPage({
     notFound();
   }
 
-  const readablePages = comic.pages.filter((p) => p._count.panels > 0);
+  // Serve solo a decidere se c'è qualcosa da leggere: basta una vignetta su
+  // una qualsiasi pagina. Il *conteggio* mostrato al lettore invece è
+  // comic.pages.length, perché il reader sfoglia tutte le tavole caricate,
+  // anche quelle non ancora ritagliate in vignette (mostrate a pagina intera).
+  const hasReadablePages = comic.pages.some((p) => p._count.panels > 0);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
@@ -64,7 +131,7 @@ export default async function ComicDetailPage({
           )}
 
           <div className="mt-8 flex items-center gap-4">
-            {readablePages.length > 0 ? (
+            {hasReadablePages ? (
               <ContinueReadingLink
                 slug={comic.slug}
                 pageCount={comic.pages.length}
@@ -73,7 +140,7 @@ export default async function ComicDetailPage({
               <span className="text-muted">In progress — coming soon</span>
             )}
             <span className="text-sm text-muted">
-              {readablePages.length} pages
+              {comic.pages.length} pages
             </span>
           </div>
         </div>
