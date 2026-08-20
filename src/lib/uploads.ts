@@ -39,10 +39,50 @@ const RASTER_MIME_TO_DETECTED_TYPE: Record<string, string> = {
   "image/webp": "webp",
 };
 
+// image-size riconosce il formato provando i parser di *tutti* i formati che
+// supporta, non solo dei tre che accettiamo qui: passandogli un file ICNS,
+// JXL o HEIF, viene invocato il parser corrispondente anche se il client ha
+// dichiarato image/png, perché il confronto con il MIME dichiarato può
+// avvenire solo dopo aver letto il file. Alcuni di quei parser hanno
+// vulnerabilità note di loop infinito senza fix a monte
+// (GHSA-w3rx-r6r6-pgpr per ICNS, GHSA-5p2g-fcmc-qvqq per JXL/HEIF — vedi
+// COMPONENTS.md); siccome imageSize è sincrona, un loop bloccherebbe l'event
+// loop di Node, cioè l'intero sito (pagine pubbliche comprese) fino a un
+// riavvio manuale del container — il `restart: unless-stopped` di Compose non
+// interviene, perché il processo resterebbe appeso, non crashato.
+//
+// Per questo la firma del file va verificata **prima** di passare il buffer a
+// image-size: così i parser dei formati che non accettiamo non vengono mai
+// raggiunti. Il controllo su `result.type` più sotto resta comunque, come
+// difesa in profondità.
+//
+// Se in futuro si aggiunge un formato raster ad ALLOWED_TYPES, va aggiunta
+// qui la firma corrispondente, altrimenti l'upload verrà rifiutato.
+const RASTER_MAGIC_BYTES: Record<string, (buffer: Buffer) => boolean> = {
+  // 89 50 4E 47 0D 0A 1A 0A
+  "image/png": (buffer) =>
+    buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  // FF D8 FF (SOI + inizio del primo marker)
+  "image/jpeg": (buffer) =>
+    buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff,
+  // Container RIFF: "RIFF" ai byte 0-3, "WEBP" ai byte 8-11 (in mezzo c'è la
+  // dimensione del file).
+  "image/webp": (buffer) =>
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP",
+};
+
 function validateRasterImage(
   buffer: Buffer,
   declaredType: string
 ): { width: number; height: number } {
+  const hasExpectedMagicBytes = RASTER_MAGIC_BYTES[declaredType];
+  if (!hasExpectedMagicBytes || !hasExpectedMagicBytes(buffer)) {
+    throw new Error("The file content doesn't match the declared format");
+  }
+
   let result;
   try {
     result = imageSize(buffer);

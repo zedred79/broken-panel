@@ -263,10 +263,23 @@ rate-limit sui tentativi di login.
   risoluzione), 8MB copertine, 2MB loghi (icone piccole). Controllati su `file.size`
   prima di leggere il buffer in memoria.
 - **Validazione sul contenuto reale, non sul Content-Type dichiarato dal client**: per i
-  formati raster (PNG/JPEG/WebP), `validateRasterImage()` usa `image-size` per leggere il
-  formato dai byte reali (magic number) e verifica che corrisponda al MIME dichiarato —
-  un file rinominato con estensione/MIME falsi viene rifiutato con 400 invece di essere
-  salvato as-is.
+  formati raster (PNG/JPEG/WebP), `validateRasterImage()` verifica in due passaggi che il
+  file sia davvero del formato che dichiara — un file rinominato con estensione/MIME
+  falsi viene rifiutato con 400 invece di essere salvato as-is.
+  1. **Pre-check sui magic byte** (`RASTER_MAGIC_BYTES`): confronta a mano la firma del
+     file con quella attesa per il MIME dichiarato, **prima** di passare il buffer a
+     `image-size`. Non è ridondante rispetto al passo 2: `image-size` riconosce il
+     formato provando i parser di *tutti* i formati che supporta, quindi senza questo
+     pre-check un file ICNS/JXL/HEIF dichiarato `image/png` verrebbe comunque dato in
+     pasto al parser di quel formato — e quei parser hanno vulnerabilità note di loop
+     infinito senza fix a monte (vedi [COMPONENTS.md](COMPONENTS.md)). Siccome
+     `imageSize()` è sincrona, un loop bloccherebbe l'event loop di Node, cioè l'intero
+     sito (pagine pubbliche comprese) fino a un riavvio manuale del container: il
+     `restart: unless-stopped` di Compose non interverrebbe, perché il processo resterebbe
+     appeso, non crashato. **Se aggiungi un formato raster ad `ALLOWED_TYPES`, aggiungi
+     anche la sua firma a `RASTER_MAGIC_BYTES`**, altrimenti l'upload verrà rifiutato.
+  2. `image-size` legge il formato dai byte reali e si verifica che corrisponda al MIME
+     dichiarato — difesa in profondità, oltre a fornire le dimensioni dell'immagine.
 - **Sanificazione degli SVG** (solo i loghi accettano `image/svg+xml`): `sanitizeSvg()`
   usa DOMPurify (via `jsdom`, uso server-side) per rimuovere `<script>`,
   gestori `onload`/`onclick`, `<foreignObject>` e ogni altro vettore XSS prima di scrivere
