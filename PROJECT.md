@@ -76,11 +76,14 @@ prisma/seed.ts                 Crea l'admin da env SOLO se non esiste già (gira
                                 avvio del container, vedi sotto)
 prisma/reset-admin-password.ts Reset forzato della password admin, solo manuale
                                 (npm run db:reset-admin-password) — vedi sotto
+prisma/admin-credentials.ts    ADMIN_EMAIL/ADMIN_PASSWORD lette dall'ambiente e
+                                validate, condivise dai due script qui sopra
 
 src/lib/
   auth.ts                      Config NextAuth (provider Credentials, callback JWT/session,
                                 rate-limit sui tentativi di login, vedi sotto)
-  login-rate-limit.ts          Contatore in-memory dei tentativi di login falliti
+  login-rate-limit.ts          Contatori in-memory dei tentativi di login falliti
+                                (per IP e per email, ruoli diversi — vedi sotto)
   prisma.ts                    Singleton PrismaClient (con adapter, vedi sopra)
   reading-progress.ts          Persistenza lato client (localStorage) dell'ultima pagina
                                 letta di ogni fumetto — vedi sezione reader più sotto
@@ -295,14 +298,92 @@ rate-limit sui tentativi di login.
   — prima non veniva ripulito nulla e i file restavano su disco per sempre. Ignora
   silenziosamente URL esterni a `/uploads/` (i loghi di default bundlati in `public/`) e
   file già assenti.
+
+  Vale anche per il percorso meno ovvio, cioè il **fallimento della scrittura su
+  DB dopo che il file è già finito su disco**: `POST /api/comics` e
+  `POST /api/comics/[id]/pages` salvano immagine e thumbnail *prima* della
+  `create` di Prisma, quindi un errore lì (DB lockato, disco pieno, slug
+  diventato duplicato per una richiesta concorrente) lascerebbe file che nessuna
+  riga referenzia. Entrambe avvolgono ora la `create` in un try/catch che li
+  cancella e rilancia — stesso pattern già presente nel PATCH di
+  `/api/comics/[id]`. **Se aggiungi altre route che scrivono un upload prima di
+  toccare il DB, ripeti questo schema.**
 - **Header di sicurezza sulla route che serve gli upload**
   (`nosniff` + CSP restrittiva, vedi la sezione precedente): difesa in
   profondità in caso la sanificazione SVG lasci passare qualcosa.
-- **Rate-limit sul login** (`src/lib/login-rate-limit.ts`, usato in `src/lib/auth.ts`):
-  5 tentativi falliti / 15 minuti per email, poi anche la password corretta viene
-  rifiutata finché la finestra non scade. In-memory (si resetta a un riavvio del
-  container) — scelta proporzionata a un'app a singolo processo con un solo account
-  admin, non serve infrastruttura esterna.
+- **Header di sicurezza globali** (`next.config.ts`, funzione `headers()`):
+  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` che
+  nega camera/microfono/geolocalizzazione, più `poweredByHeader: false`. Prima
+  esistevano header solo sulla route degli upload: `/admin` e `/login` — cioè le
+  pagine con le azioni distruttive — erano incorniciabili in un iframe di terze
+  parti (clickjacking). Verificato con `curl -D-` sul server di produzione: gli
+  header compaiono su pagine, redirect del proxy e route API, e **non**
+  sovrascrivono la CSP più stretta della route upload, che resta la sua.
+
+  Deliberatamente **senza una CSP globale**: Next.js inietta script inline per
+  idratazione e router, quindi servirebbero nonce per-richiesta generati nel
+  proxy — sproporzionato e facile da sbagliare in modo che rompa il sito solo in
+  produzione. `frame-ancestors`, l'unica direttiva che servirebbe davvero, è già
+  coperta da `X-Frame-Options: DENY`.
+- **Rate-limit sul login** (`src/lib/login-rate-limit.ts`, usato in
+  `src/lib/auth.ts` e in `POST /api/account/password`). In-memory (si resetta a
+  un riavvio del container) — scelta proporzionata a un'app a singolo processo
+  con un solo account admin, non serve infrastruttura esterna. **Due contatori
+  con ruoli diversi**, ed è il punto centrale del file:
+  - **per IP**: blocco vero e proprio, 10 fallimenti / 15 minuti. È qui che sta
+    la difesa anti-bruteforce.
+  - **per email**: mai un blocco, solo un ritardo progressivo (500ms → 4s max)
+    applicato *prima* di rispondere, sia in caso di successo che di fallimento
+    (se scattasse solo sui fallimenti sarebbe a sua volta un oracolo sulla
+    correttezza della password). Serve a rendere costoso un bruteforce
+    distribuito su tanti IP, che sfuggirebbe al blocco per IP.
+
+  **Insidia trovata e corretta** (2026-09-05): all'inizio la chiave era *solo*
+  l'email, e il blocco veniva valutato prima ancora di verificare la password.
+  Chiunque indovinasse l'indirizzo dell'admin poteva impedirgli di entrare
+  — anche con la password giusta — mandando 5 password sbagliate ogni 15 minuti:
+  un DoS gratuito sull'unico account del sito. Ora una password corretta passa
+  sempre, purché non arrivi da un IP già bloccato.
+
+  **Seconda insidia, stessa occasione**: al superamento di `MAX_TRACKED_KEYS`
+  (10.000) il file faceva `attempts.clear()`, svuotando *tutta* la Map. Bastavano
+  10.000 richieste con email casuali per cancellare anche il contatore
+  dell'account sotto attacco e ripartire da zero. Ora l'eviction è incrementale
+  (prima le entry scadute, poi le più vecchie) e le due Map sono separate proprio
+  per questo: un flood di email finte fa crescere solo `emailAttempts`, mentre in
+  `ipAttempts` resta una sola entry — l'IP dell'attaccante. Il blocco che conta
+  non può più evaporare.
+
+  **Limite noto (accettato)**: la chiave IP viene dall'ultimo elemento di
+  `X-Forwarded-For` — quello che nginx/SWAG appende con
+  `$proxy_add_x_forwarded_for`, l'unico che il client non può falsificare
+  *passando dal proxy*. Ma `docker-compose.yml` pubblica la porta anche
+  sull'host (serve l'accesso in LAN, scelta deliberata), e chi la raggiunge
+  direttamente può inventarsi l'header e ottenere un bucket diverso ad ogni
+  tentativo. Resta comunque attivo il ritardo per email, che non dipende
+  dall'IP. Chiudere il buco richiederebbe di fidarsi dell'header solo in
+  presenza di un segreto condiviso col proxy — sproporzionato finché la porta
+  non è esposta su internet.
+- **Tempo di risposta costante al login**, contro l'enumerazione degli account:
+  se l'email non esiste, `authorize()` confronta comunque la password contro un
+  hash "civetta" generato da byte casuali. Prima il ramo "utente inesistente"
+  tornava in <1ms mentre quello "utente esistente, password sbagliata" pagava i
+  ~200ms di bcrypt: bastava cronometrare le risposte per sapere quale email
+  corrisponde a un account reale.
+- **Rate-limit anche su `POST /api/account/password`**, sullo stesso contatore
+  per IP del login (è lo stesso attaccante e la stessa credenziale, non ha senso
+  tenerli separati). Serve al caso in cui una sessione admin sia stata dirottata:
+  senza, chi la controlla potrebbe provare `currentPassword` all'infinito, e
+  indovinarla gli permetterebbe di cambiare la password e scacciare l'admin.
+- **Nessuna credenziale di default negli script di seed**
+  (`prisma/admin-credentials.ts`): `ADMIN_EMAIL` e `ADMIN_PASSWORD` sono
+  obbligatorie e la password deve rispettare lo stesso minimo di 8 caratteri
+  imposto dal cambio password da UI. Prima gli script ricadevano su
+  `admin@brokenpanel.local` / `changeme123`, scritte in chiaro nel sorgente: in
+  Docker non poteva succedere (`docker-entrypoint.sh` esegue il seed solo se
+  entrambe le variabili sono valorizzate), ma un `npm run db:seed` locale senza
+  `.env` bastava a creare un account con credenziali note pubblicamente.
 
 ## Route API principali
 
@@ -337,7 +418,14 @@ richiesta, quindi cambiare la password **non invalida altre sessioni già aperte
 altrove** (altri browser/dispositivi restano loggati finché il loro token JWT non
 scade naturalmente). Per un sito a singolo admin il rischio pratico è basso; una
 soluzione completa richiederebbe sessioni lato DB o un claim di versione nel JWT
-controllato ad ogni richiesta — non implementata, sproporzionata per questo caso d'uso.
+controllato ad ogni richiesta — non implementata, sproporzionata per questo caso
+d'uso, e con una controindicazione concreta: il callback `jwt` gira anche in
+`src/proxy.ts`, quindi una query Prisma lì dentro trascinerebbe `better-sqlite3`
+(modulo nativo) in un contesto dove oggi non serve.
+
+Mitigazione economica applicata al suo posto: `session.maxAge` esplicito a **7
+giorni** invece del default di Auth.js (30). Non revoca niente, ma accorcia di
+oltre quattro volte la finestra in cui una sessione clonata resta valida.
 
 **Insidia trovata e corretta** (scattata subito, testando in locale con Docker): prima
 `prisma/seed.ts` faceva un `upsert` che aggiornava sempre `passwordHash` da

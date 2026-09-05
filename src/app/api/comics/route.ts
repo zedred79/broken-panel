@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { slugify } from "@/lib/slugify";
-import { saveCoverImage } from "@/lib/uploads";
+import { deleteUploadedFile, saveCoverImage } from "@/lib/uploads";
 
 export async function GET() {
   const session = await requireAdmin();
@@ -63,21 +63,35 @@ export async function POST(request: Request) {
     }
   }
 
-  const comic = await prisma.comic.create({
-    data: {
-      title: title.trim(),
-      slug,
-      sourceWork: sourceWork.trim(),
-      author: typeof author === "string" && author.trim() ? author.trim() : null,
-      description:
-        typeof description === "string" && description.trim()
-          ? description.trim()
-          : null,
-      style: typeof style === "string" && style.trim() ? style.trim() : null,
-      coverImage,
-      coverThumbnail,
-    },
-  });
+  let comic;
+  try {
+    comic = await prisma.comic.create({
+      data: {
+        title: title.trim(),
+        slug,
+        sourceWork: sourceWork.trim(),
+        author:
+          typeof author === "string" && author.trim() ? author.trim() : null,
+        description:
+          typeof description === "string" && description.trim()
+            ? description.trim()
+            : null,
+        style: typeof style === "string" && style.trim() ? style.trim() : null,
+        coverImage,
+        coverThumbnail,
+      },
+    });
+  } catch (err) {
+    // La copertina è già su disco a questo punto: senza questo cleanup un
+    // fallimento della create (es. slug diventato duplicato per una richiesta
+    // concorrente) lascerebbe file orfani. Stesso pattern del PATCH in
+    // ./[id]/route.ts.
+    await Promise.all([
+      deleteUploadedFile(coverImage),
+      deleteUploadedFile(coverThumbnail),
+    ]);
+    throw err;
+  }
 
   return NextResponse.json({ comic }, { status: 201 });
 }

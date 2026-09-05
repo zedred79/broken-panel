@@ -52,6 +52,7 @@ c'è solo la tabella "cosa gira su cosa, con che versione, con che limiti".
 | Rate limiting login | in-memory, nessuna dipendenza esterna | `src/lib/login-rate-limit.ts` | Scelta deliberata (single-admin app) — non serve Redis/altro. Si azzera al riavvio del processo, accettabile per questo caso d'uso. |
 | `deepmerge-ts` (transitiva, via `prisma` → `@prisma/config`) | `<8.0.0` | `package-lock.json` (non diretta) | **Vulnerabilità nota non risolvibile senza regressione** (verificato 2026-08-18): `npm audit` segnala high — GHSA-ggr8-5vv4-36mx, stack exhaustion nel merge di grafi di oggetti ricorsivi. Attenzione: `prisma` sta in `dependencies` (non `devDependencies`) perché `docker-entrypoint.sh` esegue `npx prisma db push` ad ogni avvio, quindi la dipendenza **finisce nell'immagine di produzione**. `npm audit fix --force` proporrebbe il downgrade a `prisma@6.12.0`: **da non fare**, annullerebbe la migrazione a Prisma 7. Prisma 7.9.1 è già l'ultima pubblicata a monte. Rischio pratico ~nullo: il merge riguarda il file di configurazione del CLI (`prisma.config.ts`), non input che arrivino da fuori. Ricontrollare ad ogni giro se Prisma ha aggiornato `@prisma/config`. Ricontrollato 2026-09-01: invariato anche dopo il bump a Prisma 7.10.0, che pinna ancora `deepmerge-ts@7.1.5` (a monte è uscita la 8.0.2, ma è `@prisma/config` a doverla adottare). |
 | `mysql2` (transitiva, via `prisma`) | `3.15.3` | `package-lock.json` (non diretta) | **Vulnerabilità nota non risolvibile senza regressione** (comparsa al giro del 2026-09-01): `npm audit` segnala high — GHSA-3f6p-5ww8-9rcr, downgrade del plugin di autenticazione a `mysql_clear_password` che espone le credenziali in chiaro (versioni `<3.22.0`). Stessa situazione di `deepmerge-ts`: arriva da `prisma`, che sta in `dependencies` (vedi riga sopra il perché) e quindi finisce nell'immagine di produzione; Prisma 7.10.0 pinna ancora `mysql2@3.15.3` e l'unico "fix" proposto da `npm audit fix --force` è il downgrade a `prisma@6.19.3`, **da non fare**. Rischio pratico nullo: il progetto usa SQLite, `mysql2` non viene mai caricato e non si apre nessuna connessione MySQL — è solo un driver che il CLI di Prisma si porta dietro per gli altri database supportati. Ricontrollare ad ogni giro se Prisma ha alzato il pin. |
+| `fast-uri` (transitiva, via `prisma` → `@prisma/dev` → `@prisma/streams-local` → `ajv`) | `3.1.7` | `package-lock.json` (non diretta) | `npm audit` la segnalava high il 2026-09-05, comparsa dopo il giro del 2026-09-01: quattro advisory (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) fra SSRF e host confusion nella normalizzazione degli URI (`3.0.0` - `3.1.5`). **Risolta** con `npm audit fix` (bump del lockfile da `3.1.5` a `3.1.7`, nessuna modifica a `package.json`, nessun breaking change). A differenza di `deepmerge-ts` e `mysql2` — che arrivano dallo stesso ramo `prisma` ma sono pinnate a monte — qui il range lo permetteva. Il codice non usa comunque `ajv` né fa richieste in uscita: nessuna esposizione pratica, aggiornata perché il fix era gratuito. |
 | `js-yaml` (transitiva, via `eslint` → `@eslint/eslintrc`) | `4.3.1` | `package-lock.json` (non diretta) | `npm audit` segnalava high il 2026-08-07: CVE-2026-59870, quadratic CPU consumption nella risoluzione `!!omap` (3.x e 4.x < 4.3.1). Risolta con `npm audit fix` (bump automatico del lockfile, nessuna modifica a `package.json`). Solo devDependency (eslint), non tocca il runtime di produzione. |
 
 ## Immagini / thumbnail
@@ -67,3 +68,22 @@ Quando chiedi "controlla se c'è qualcosa da aggiornare", il punto di partenza
 ciascun componente, rileggendo prima le "Note" per capire se un aggiornamento
 è già stato tentato e scartato (ed eventualmente ritentarlo se la nota indica
 una condizione che nel frattempo potrebbe essersi risolta).
+
+## Stato di `npm audit`
+
+Ultimo controllo: **2026-09-05** — `5 high severity vulnerabilities`, ma sono
+**3 cause reali**, tutte già analizzate e accettate consapevolmente nelle righe
+qui sopra:
+
+- `image-size` — nessun fix a monte, neutralizzata dal pre-check sui magic byte.
+- `deepmerge-ts` e `mysql2` — entrambe pinnate da `prisma`, l'unico "fix"
+  proposto è il downgrade a Prisma 6 che annullerebbe la migrazione.
+
+Le altre due voci (`@prisma/config` e `prisma`) non hanno un problema proprio:
+compaiono solo come "depends on vulnerable versions" delle due qui sopra. È il
+motivo per cui il totale dice 5 e non 3 — non contarle come problemi separati.
+
+`npm audit` non tornerà mai a zero finché resta questa situazione: un output non
+vuoto **non** significa che ci sia qualcosa di nuovo da fare. Confronta sempre
+l'elenco con questi cinque nomi — se ne compare un sesto, quello sì va valutato
+(è così che è stata trovata `fast-uri`).
