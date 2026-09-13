@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -128,20 +130,17 @@ export function SiteSettingsForm({ initial }: Props) {
     formData.set("clearHeaderLogo", String(clearHeader));
     formData.set("clearHeroLogo", String(clearHero));
 
-    const res = await fetch("/api/site-settings", { method: "PUT", body: formData });
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Unexpected error");
+    try {
+      await adminRequest("/api/site-settings", { method: "PUT", body: formData });
+      setClearHeader(false);
+      setClearHero(false);
+      setSaved(true);
+      router.refresh();
+    } catch (error) {
+      setError(adminErrorMessage(error));
+    } finally {
       setPending(false);
-      return;
     }
-
-    setClearHeader(false);
-    setClearHero(false);
-    setSaved(true);
-    setPending(false);
-    router.refresh();
   }
 
   return (

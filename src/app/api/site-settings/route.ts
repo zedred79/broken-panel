@@ -35,6 +35,16 @@ export async function PUT(request: Request) {
   const clearHeroLogo = formData.get("clearHeroLogo") === "true";
 
   const data: { headerLogo?: string | null; heroLogo?: string | null } = {};
+  const previous = await prisma.siteSetting.findUnique({
+    where: { id: "singleton" },
+  });
+
+  async function cleanupNewLogos() {
+    await Promise.all([
+      deleteUploadedFile(data.headerLogo),
+      deleteUploadedFile(data.heroLogo),
+    ]);
+  }
 
   try {
     if (headerLogoFile instanceof File && headerLogoFile.size > 0) {
@@ -49,19 +59,22 @@ export async function PUT(request: Request) {
       data.heroLogo = null;
     }
   } catch (err) {
+    await cleanupNewLogos();
     const message = err instanceof Error ? err.message : "Upload error";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const previous = await prisma.siteSetting.findUnique({
-    where: { id: "singleton" },
-  });
-
-  const settings = await prisma.siteSetting.upsert({
-    where: { id: "singleton" },
-    update: data,
-    create: { id: "singleton", ...data },
-  });
+  let settings;
+  try {
+    settings = await prisma.siteSetting.upsert({
+      where: { id: "singleton" },
+      update: data,
+      create: { id: "singleton", ...data },
+    });
+  } catch (error) {
+    await cleanupNewLogos();
+    throw error;
+  }
 
   await Promise.all([
     "headerLogo" in data && previous?.headerLogo !== data.headerLogo

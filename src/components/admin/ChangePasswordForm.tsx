@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 
@@ -22,24 +24,29 @@ export function ChangePasswordForm() {
     }
 
     setPending(true);
-    const res = await fetch("/api/account/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Unexpected error");
-      setPending(false);
+    try {
+      await adminRequest("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    } catch (error) {
+      setError(adminErrorMessage(error));
       return;
+    } finally {
+      setPending(false);
     }
 
     setSaved(true);
-    // La sessione JWT attuale resterebbe valida anche dopo il cambio (il
-    // token non codifica la password), quindi forziamo un nuovo login con
-    // le nuove credenziali invece di lasciarla proseguire silenziosamente.
-    await signOut({ callbackUrl: "/login" });
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    // Il salvataggio è riuscito anche se la successiva disconnessione fallisce.
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setError("Password changed, but sign-out failed. Close this session and sign in again with your new password.");
+    }
   }
 
   return (

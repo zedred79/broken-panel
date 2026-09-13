@@ -1,3 +1,4 @@
+import { readJsonObject } from "@/lib/api-input";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
@@ -18,7 +19,10 @@ export async function POST(
     return NextResponse.json({ error: "Comic not found" }, { status: 404 });
   }
 
-  const body = await request.json();
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: "Expected a valid JSON object" }, { status: 400 });
+  }
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   if (!title) {
     return NextResponse.json({ error: "Chapter title is required" }, { status: 400 });

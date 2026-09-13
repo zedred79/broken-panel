@@ -1,3 +1,4 @@
+import { readJsonObject } from "@/lib/api-input";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
@@ -12,7 +13,10 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: "Expected a valid JSON object" }, { status: 400 });
+  }
 
   const chapter = await prisma.chapter.findUnique({ where: { id } });
   if (!chapter) {

@@ -1,3 +1,4 @@
+import { readJsonObject } from "@/lib/api-input";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -30,7 +31,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json();
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: "Expected a valid JSON object" }, { status: 400 });
+  }
   const currentPassword = body?.currentPassword;
   const newPassword = body?.newPassword;
 

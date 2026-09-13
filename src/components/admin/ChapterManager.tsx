@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -30,31 +32,42 @@ export function ChapterManager({
 
     setCreating(true);
     setError(null);
-    const res = await fetch(`/api/comics/${comicId}/chapters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Unexpected error");
-    } else {
+    try {
+      await adminRequest(`/api/comics/${comicId}/chapters`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
       setNewTitle("");
       router.refresh();
+    } catch (error) {
+      setError(adminErrorMessage(error));
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
+  }
+
+  async function updateChapter(chapterId: string, init: RequestInit): Promise<boolean> {
+    setBusyId(chapterId);
+    setError(null);
+    try {
+      await adminRequest(`/api/chapters/${chapterId}`, init);
+      router.refresh();
+      return true;
+    } catch (error) {
+      setError(adminErrorMessage(error));
+      return false;
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function move(chapterId: string, direction: "up" | "down") {
-    setBusyId(chapterId);
-    await fetch(`/api/chapters/${chapterId}`, {
+    await updateChapter(chapterId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ direction }),
     });
-    router.refresh();
-    setBusyId(null);
   }
 
   async function rename(chapterId: string) {
@@ -63,23 +76,17 @@ export function ChapterManager({
       setRenamingId(null);
       return;
     }
-    setBusyId(chapterId);
-    await fetch(`/api/chapters/${chapterId}`, {
+    const saved = await updateChapter(chapterId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    setRenamingId(null);
-    router.refresh();
-    setBusyId(null);
+    if (saved) setRenamingId(null);
   }
 
   async function remove(chapterId: string) {
     if (!confirm("Delete this chapter? Its pages will remain, without a chapter.")) return;
-    setBusyId(chapterId);
-    await fetch(`/api/chapters/${chapterId}`, { method: "DELETE" });
-    router.refresh();
-    setBusyId(null);
+    await updateChapter(chapterId, { method: "DELETE" });
   }
 
   return (

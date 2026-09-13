@@ -1,3 +1,4 @@
+import { readJsonObject } from "@/lib/api-input";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
@@ -13,7 +14,10 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: "Expected a valid JSON object" }, { status: 400 });
+  }
 
   const page = await prisma.page.findUnique({ where: { id } });
   if (!page) {
@@ -22,7 +26,7 @@ export async function PATCH(
 
   if ("chapterId" in body) {
     const chapterId = body.chapterId;
-    if (chapterId !== null && typeof chapterId !== "string") {
+    if (chapterId !== null && (typeof chapterId !== "string" || !chapterId.trim())) {
       return NextResponse.json({ error: "Invalid chapterId" }, { status: 400 });
     }
     if (chapterId) {

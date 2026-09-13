@@ -1,3 +1,4 @@
+import { readJsonObject, isValidPanel } from "@/lib/api-input";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
@@ -45,7 +46,10 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: "Expected a valid JSON object" }, { status: 400 });
+  }
   const panels = body?.panels;
 
   if (!Array.isArray(panels)) {
@@ -53,19 +57,7 @@ export async function PUT(
   }
 
   for (const panel of panels) {
-    if (
-      !Array.isArray(panel.points) ||
-      panel.points.length < 3 ||
-      !panel.points.every(
-        (pt: PointInput) =>
-          typeof pt?.x === "number" &&
-          typeof pt?.y === "number" &&
-          pt.x >= 0 &&
-          pt.x <= 100 &&
-          pt.y >= 0 &&
-          pt.y <= 100
-      )
-    ) {
+    if (!isValidPanel(panel)) {
       return NextResponse.json(
         { error: "Each panel requires at least 3 valid points (0-100)" },
         { status: 400 }

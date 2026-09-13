@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,49 +44,52 @@ export function PageManager({
     const formData = new FormData();
     formData.set("file", file);
 
-    const res = await fetch(`/api/comics/${comicId}/pages`, {
-      method: "POST",
-      body: formData,
-    });
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Upload error");
-    } else {
+    try {
+      await adminRequest(`/api/comics/${comicId}/pages`, {
+        method: "POST",
+        body: formData,
+      });
       router.refresh();
+    } catch (error) {
+      setError(adminErrorMessage(error));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function updatePage(pageId: string, init: RequestInit) {
+    setBusyId(pageId);
+    setError(null);
+    try {
+      await adminRequest(`/api/pages/${pageId}`, init);
+      router.refresh();
+    } catch (error) {
+      setError(adminErrorMessage(error));
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function move(pageId: string, direction: "up" | "down") {
-    setBusyId(pageId);
-    await fetch(`/api/pages/${pageId}`, {
+    await updatePage(pageId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ direction }),
     });
-    router.refresh();
-    setBusyId(null);
   }
 
   async function remove(pageId: string) {
     if (!confirm("Delete this page and all its panels?")) return;
-    setBusyId(pageId);
-    await fetch(`/api/pages/${pageId}`, { method: "DELETE" });
-    router.refresh();
-    setBusyId(null);
+    await updatePage(pageId, { method: "DELETE" });
   }
 
   async function assignChapter(pageId: string, chapterId: string | null) {
-    setBusyId(pageId);
-    await fetch(`/api/pages/${pageId}`, {
+    await updatePage(pageId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chapterId }),
     });
-    router.refresh();
-    setBusyId(null);
   }
 
   const chapterTitleById = new Map(chapters.map((c) => [c.id, c.title]));

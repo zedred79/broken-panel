@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } fr
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearReadingProgress, saveReadingProgress } from "@/lib/reading-progress";
+import { readerProgressPercent } from "@/lib/reader-progress";
 
 type Point = { x: number; y: number };
 type ReaderPanel = { points: Point[] };
@@ -18,6 +19,7 @@ type ReaderPage = {
 };
 
 const TRANSITION_MS = 550;
+const EMPTY_PANELS: ReaderPanel[] = [];
 
 function bboxOf(points: Point[]) {
   const xs = points.map((p) => p.x);
@@ -80,7 +82,7 @@ export function ComicReader({
   }, [slug, pageIndex]);
 
   const currentPage = pages[pageIndex];
-  const panels = currentPage?.panels ?? [];
+  const panels = currentPage?.panels ?? EMPTY_PANELS;
   const hasChapters = useMemo(
     () => pages.some((p) => p.chapterTitle !== null),
     [pages]
@@ -192,12 +194,7 @@ export function ComicReader({
     return { displayedW, displayedH, offsetX0, offsetY0, scale, tx, ty };
   }, [containerSize, currentPage, panelIndex, panels]);
 
-  const totalSteps = pages.reduce((sum, p) => sum + Math.max(p.panels.length, 1) + 1, 0);
-  const stepsBefore = pages
-    .slice(0, pageIndex)
-    .reduce((sum, p) => sum + Math.max(p.panels.length, 1) + 1, 0);
-  const currentStep = stepsBefore + (panelIndex + 2);
-  const progressPct = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+  const progressPct = readerProgressPercent(pages, pageIndex, panelIndex);
 
   const darkOpacity = panelIndex === -1 ? 0 : 0.87;
 

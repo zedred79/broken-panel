@@ -546,8 +546,13 @@ Non ancora fatto / possibili prossimi passi: riordino drag&drop delle pagine
 per-capitolo (oggi l'ordine resta globale sul fumetto, senza enforcement di contiguità
 tra pagine dello stesso capitolo), i18n (tutto è in italiano hardcoded), statistiche di
 lettura (aggregate, lato admin — diverso dal progresso di lettura per-visitatore già
-fatto), commenti/community, test automatizzati (nessuno presente, verifica solo tramite
-`npm run build`/lint + test manuale).
+fatto), commenti/community e test end-to-end completi.
+
+Test di regressione disponibili con `npm test` (`node:test`, TypeScript via `tsx`,
+nessuna nuova dipendenza): validazione dei payload JSON, errori HTTP/rete nei form
+admin con possibilità di riprovare, progresso del reader sulle tavole senza vignette,
+upload corrotti senza file orfani e generazione di thumbnail valide. I test di upload
+usano cartelle temporanee; non toccano il database o gli upload dell'app.
 
 ## Comandi utili
 

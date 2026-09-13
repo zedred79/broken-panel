@@ -6,8 +6,21 @@ effetto "zoom sulle vignette" stile GlobalComix.
 
 ## Sviluppo locale
 
+Richiede Node.js 24 e npm. Prima del primo avvio, crea `.env`:
+
 ```bash
-npm install
+cp .env.example .env
+```
+
+Imposta `NEXTAUTH_URL=http://localhost:3000`, genera `NEXTAUTH_SECRET` con
+`openssl rand -base64 32` e scegli `ADMIN_EMAIL` e `ADMIN_PASSWORD` (almeno 8
+caratteri). Il template contiene `DATABASE_URL=file:./prisma/dev.db` per SQLite
+locale; Docker Compose imposta un percorso separato dentro il container.
+
+Installa e inizializza il progetto:
+
+```bash
+npm ci
 npx prisma generate
 npx prisma db push
 npm run db:seed   # crea l'utente admin da ADMIN_EMAIL/ADMIN_PASSWORD in .env
@@ -16,8 +29,18 @@ npm run dev
 
 Apri `http://localhost:3000`, admin su `http://localhost:3000/admin`.
 
-Le variabili di sviluppo sono in `.env` (già presente, con credenziali di test:
-`admin@brokenpanel.local` / `changeme123` — **cambiale prima di andare in produzione**).
+`.env` e il database locale non sono versionati. Per le verifiche automatiche:
+
+```bash
+npm test
+npm run lint
+npx tsc --noEmit --incremental false
+npm run build
+```
+
+I test usano cartelle temporanee per gli upload, senza modificare il database
+o i file caricati dell'app. La build scarica i font da Google Fonts e richiede
+accesso alla rete.
 
 ## Password admin
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -27,18 +29,17 @@ export function DeleteComicButton({
     }
 
     setBusy(true);
-    const res = await fetch(`/api/comics/${comicId}`, { method: "DELETE" });
-
-    if (!res.ok) {
-      alert("Unable to delete the comic.");
+    try {
+      await adminRequest(`/api/comics/${comicId}`, { method: "DELETE" });
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else {
+        router.refresh();
+      }
+    } catch (error) {
+      alert(adminErrorMessage(error));
+    } finally {
       setBusy(false);
-      return;
-    }
-
-    if (redirectTo) {
-      router.push(redirectTo);
-    } else {
-      router.refresh();
     }
   }
 

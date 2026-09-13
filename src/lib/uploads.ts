@@ -160,6 +160,24 @@ export async function deleteUploadedFile(
   }
 }
 
+async function saveRasterFiles(buffer: Buffer, id: string, ext: string) {
+  const filename = `${id}.${ext}`;
+  const url = `/uploads/${filename}`;
+  await mkdir(UPLOADS_ROOT, { recursive: true });
+  try {
+    await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
+    const thumbnailUrl = await saveThumbnail(buffer, id);
+    return { url, thumbnailUrl };
+  } catch (error) {
+    // Anche una scrittura fallita può avere lasciato un file parziale.
+    await Promise.all([
+      deleteUploadedFile(url),
+      deleteUploadedFile(`/uploads/${id}-thumb.webp`),
+    ]);
+    throw error;
+  }
+}
+
 export async function savePageImage(file: File): Promise<{
   url: string;
   thumbnailUrl: string;
@@ -176,13 +194,8 @@ export async function savePageImage(file: File): Promise<{
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const id = randomUUID();
-  const filename = `${id}.${ext}`;
-
-  await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
-  const thumbnailUrl = await saveThumbnail(buffer, id);
-
-  return { url: `/uploads/${filename}`, thumbnailUrl, width, height };
+  const saved = await saveRasterFiles(buffer, id, ext);
+  return { ...saved, width, height };
 }
 
 export async function saveCoverImage(
@@ -197,13 +210,7 @@ export async function saveCoverImage(
   validateRasterImage(buffer, file.type);
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const id = `cover-${randomUUID()}`;
-  const filename = `${id}.${ext}`;
-
-  await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
-  const thumbnailUrl = await saveThumbnail(buffer, id);
-
-  return { url: `/uploads/${filename}`, thumbnailUrl };
+  return saveRasterFiles(buffer, id, ext);
 }
 
 const LOGO_ALLOWED_TYPES = new Set([
@@ -250,7 +257,12 @@ export async function saveLogoImage(file: File): Promise<string> {
   const filename = `logo-${randomUUID()}.${ext}`;
 
   await mkdir(UPLOADS_ROOT, { recursive: true });
-  await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
+  try {
+    await writeFile(path.join(/*turbopackIgnore: true*/ UPLOADS_ROOT, filename), buffer);
+  } catch (error) {
+    await deleteUploadedFile(`/uploads/${filename}`);
+    throw error;
+  }
 
   return `/uploads/${filename}`;
 }

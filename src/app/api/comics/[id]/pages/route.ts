@@ -34,14 +34,14 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const last = await prisma.page.findFirst({
-    where: { comicId },
-    orderBy: { order: "desc" },
-  });
-  const nextOrder = (last?.order ?? 0) + 1;
-
   let page;
   try {
+    const last = await prisma.page.findFirst({
+      where: { comicId },
+      orderBy: { order: "desc" },
+    });
+    const nextOrder = (last?.order ?? 0) + 1;
+
     page = await prisma.page.create({
       data: {
         comicId,

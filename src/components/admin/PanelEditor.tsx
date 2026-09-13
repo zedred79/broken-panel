@@ -1,5 +1,7 @@
 "use client";
 
+import { adminRequest, adminErrorMessage } from "@/lib/admin-request";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -153,20 +155,19 @@ export function PanelEditor({
     setError(null);
     setSaved(false);
 
-    const res = await fetch(`/api/pages/${pageId}/panels`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ panels: panels.map((p) => ({ points: p.points })) }),
-    });
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Save error");
-    } else {
+    try {
+      await adminRequest(`/api/pages/${pageId}/panels`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ panels: panels.map((p) => ({ points: p.points })) }),
+      });
       setSaved(true);
       router.refresh();
+    } catch (error) {
+      setError(adminErrorMessage(error));
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   return (
