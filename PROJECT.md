@@ -274,8 +274,10 @@ rate-limit sui tentativi di login.
      `image-size`. Non è ridondante rispetto al passo 2: `image-size` riconosce il
      formato provando i parser di *tutti* i formati che supporta, quindi senza questo
      pre-check un file ICNS/JXL/HEIF dichiarato `image/png` verrebbe comunque dato in
-     pasto al parser di quel formato — e quei parser hanno vulnerabilità note di loop
-     infinito senza fix a monte (vedi [COMPONENTS.md](COMPONENTS.md)). Siccome
+     pasto al parser di quel formato — e quei parser avevano vulnerabilità note di loop
+     infinito (corrette a monte solo con `image-size` 2.0.3, vedi
+     [COMPONENTS.md](COMPONENTS.md); il pre-check resta come difesa in profondità
+     contro bug futuri dello stesso tipo). Siccome
      `imageSize()` è sincrona, un loop bloccherebbe l'event loop di Node, cioè l'intero
      sito (pagine pubbliche comprese) fino a un riavvio manuale del container: il
      `restart: unless-stopped` di Compose non interverrebbe, perché il processo resterebbe
