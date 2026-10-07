@@ -121,7 +121,8 @@ per cui una volta il form "Cambia password" non compariva pur essendo già nel c
 
 ## Pubblicare l'immagine su Docker Hub
 
-L'immagine è `zedred/broken-panel` (repository **privato**). Va ricostruita e
+L'immagine è `zedred/broken-panel` (repository **pubblico**: chiunque può scaricarla
+con `docker compose pull`, ma solo il proprietario può pubblicarla). Va ricostruita e
 ripubblicata solo quando cambia il codice — il server di produzione non builda mai da
 sorgente, scarica solo l'immagine già pronta (vedi sotto).
 
@@ -175,7 +176,6 @@ deve appartenergli fin dall'inizio, altrimenti l'app non riesce a scriverci.
 mkdir -p data/db data/uploads
 sudo chown -R 1001:1001 data
 
-docker login                 # se non l'hai già fatto su questa macchina
 docker compose pull          # scarica zedred/broken-panel:latest, niente build locale
 docker compose up -d
 ```
@@ -230,3 +230,14 @@ versionati.
 Se preferisci ancora buildare direttamente sul server (serve avere i sorgenti lì e i
 tool di compilazione nell'immagine, vedi PROJECT.md sul perché gli stage `deps`/`builder`
 non usano `-slim`), `docker compose up -d --build` funziona esattamente come prima.
+
+## Licenza
+
+Il codice è rilasciato con licenza [MIT](LICENSE).
+
+**Esclusi dalla licenza**: il nome "Broken Panel" e i loghi (`public/logo.svg`,
+`public/logo-mark.svg`) sono marchi di zedred e restano riservati — non sono
+coperti dalla licenza MIT e non possono essere riutilizzati senza permesso. Se
+riusi il codice per un tuo progetto, sostituiscili con nome e loghi tuoi (i loghi
+del sito si cambiano anche da `/admin/settings`). I fumetti pubblicati sul sito non
+fanno parte di questo repository.

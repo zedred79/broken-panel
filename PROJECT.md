@@ -15,7 +15,10 @@ in fumetti con l'AI, ognuno in uno stile grafico diverso. La piattaforma è tipo
 GlobalComix: un solo admin (zedred) pubblica i fumetti, i lettori li sfogliano con un
 effetto di zoom automatico sulle vignette.
 
-Repo: https://github.com/zedred79/broken-panel (privato)
+Repo: https://github.com/zedred79/broken-panel (pubblico, licenza MIT — nome e loghi
+"Broken Panel" esclusi, vedi la sezione Licenza del README). I commit usano l'email
+noreply di GitHub (`52261079+zedred79@users.noreply.github.com`, impostata nella config
+git locale del repo): non committare con l'email personale.
 Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esistente.
 
 ## Stack e perché
@@ -52,7 +55,7 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
   immagini ufficiali attivamente mantenuto).
 - **docker-compose.yml** con porta host non standard (`HOST_PORT`, default 48217, per non
   entrare in conflitto con gli altri servizi già sul server) e rete esterna condivisa con
-  SWAG. `image: zedred/broken-panel:latest` (repository **privato** su Docker Hub) è la
+  SWAG. `image: zedred/broken-panel:latest` (repository **pubblico** su Docker Hub) è la
   fonte primaria in produzione: il server fa solo `docker compose pull && up -d`, senza
   bisogno dei sorgenti né dei tool di compilazione — `build: .` resta nel file solo per
   chi vuole ripubblicare una nuova versione (`docker compose build && docker compose
