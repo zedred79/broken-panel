@@ -44,15 +44,16 @@ Deploy target: server Ubuntu di zedred, Docker + reverse proxy SWAG già esisten
 - **NextAuth v5 (Auth.js)** con provider Credentials, sessione JWT. Un solo utente admin,
   creato via seed da `ADMIN_EMAIL`/`ADMIN_PASSWORD`. Non c'è registrazione, non c'è
   gestione multi-utente: è una scelta deliberata (uso singolo).
-- **Docker** (Dockerfile multi-stage). Gli stage `deps`/`builder` usano `node:24` (immagine
+- **Docker** (Dockerfile multi-stage). Gli stage `deps`/`builder` usano `node:26` (immagine
   "piena", basata su `buildpack-deps`) invece di `-slim`: include già gcc/g++/make/python3,
   necessari per compilare `better-sqlite3` a install time. Lo stage `runner` (quello che
-  finisce in produzione) resta `node:24-slim` — i compilatori restano confinati agli stage
+  finisce in produzione) resta `node:26-slim` — i compilatori restano confinati agli stage
   intermedi, scartati dal multi-stage build, zero impatto su dimensione/sicurezza
   dell'immagine finale. `runner` installa anche `libstdc++6` via apt (richiesta a runtime
   dal binario nativo di `better-sqlite3`) oltre a `openssl` (richiesta dai binari di
-  Prisma). Node 20 è stato abbandonato perché ormai end-of-life (rimosso dal repository
-  immagini ufficiali attivamente mantenuto).
+  Prisma). Node 26 è l'Active LTS dal 2026-10-28 (adottato il giorno dopo, al posto di
+  Node 24 già in Maintenance). Node 20 è stato abbandonato perché ormai end-of-life
+  (rimosso dal repository immagini ufficiali attivamente mantenuto).
 - **docker-compose.yml** con porta host non standard (`HOST_PORT`, default 48217, per non
   entrare in conflitto con gli altri servizi già sul server) e rete esterna condivisa con
   SWAG. `image: zedred/broken-panel:latest` (repository **pubblico** su Docker Hub) è la

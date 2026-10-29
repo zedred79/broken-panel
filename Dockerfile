@@ -2,13 +2,13 @@
 ## non -slim: include già gcc/g++/make/python3, necessari per compilare
 ## better-sqlite3 (driver SQLite nativo di Prisma 7). Scartata dal multi-stage
 ## build, non finisce mai nell'immagine di produzione (vedi stage runner).
-FROM node:24 AS deps
+FROM node:26 AS deps
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm install
 
-FROM node:24 AS builder
+FROM node:26 AS builder
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,7 +17,7 @@ ENV DATABASE_URL="file:/data/app.db"
 RUN npx prisma generate
 RUN npm run build
 
-FROM node:24-slim AS runner
+FROM node:26-slim AS runner
 WORKDIR /app
 ## libstdc++6 è richiesta a runtime dal binario nativo di better-sqlite3
 ## (compilato nello stage builder); openssl serve ai binari di Prisma.
